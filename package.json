@@ -1,16 +1,17 @@
 {
   "name": "uninus-weather-station-card",
   "version": "0.0.1",
-  "description": "UNINUS weather station card for Home Assistant",
-  "main": "index.js",
+  "description": "Responsive UNINUS weather station and wind rose card for Home Assistant Lovelace",
+  "main": "uninus-weather-station-card.js",
   "type": "module",
   "scripts": {
     "http-server": "http-server ./",
     "lint": "npx eslint .",
     "typecheck": "tsc --noEmit",
+    "build": "npm run esbuild-uninus",
     "esbuild": "npm run esbuild-windrose && npm run esbuild-uninus",
     "esbuild-windrose": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js",
-    "esbuild-uninus": "esbuild src/uninus/UninusWeatherStationCard.ts --bundle --minify --target=es2017 --outfile=build/uninus-weather-station-card.js",
+    "esbuild-uninus": "esbuild src/uninus/UninusWeatherStationCard.ts --bundle --minify --target=es2017 --outfile=build/uninus-weather-station-card.js && node -e \"require('node:fs').copyFileSync('build/uninus-weather-station-card.js', 'uninus-weather-station-card.js')\"",
     "esbuild-watch": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js --watch",
     "esbuild-uninus-watch": "esbuild src/uninus/UninusWeatherStationCard.ts --bundle --minify --target=es2017 --outfile=build/uninus-weather-station-card.js --watch",
     "test": "jest --runInBand"
@@ -23,7 +24,9 @@
     "lovelace",
     "custom-cards",
     "windrose",
-    "weatherstation"
+    "weather-station",
+    "uninus",
+    "taiwan"
   ],
   "author": "",
   "license": "MIT",

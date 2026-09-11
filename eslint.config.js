@@ -4,7 +4,7 @@ import tsParser from "@typescript-eslint/parser";
 
 export default [
     {
-        ignores: ["build/**", "dist/**", "node_modules/**", ".eslintrc.js"],
+        ignores: ["build/**", "dist/**", "node_modules/**", "uninus-weather-station-card.js", ".eslintrc.js"],
     },
     eslint.configs.recommended,
     {

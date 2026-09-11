@@ -1,1052 +1,351 @@
-# Lovelace Windrose card
+# UNINUS Weather Station Card
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-41BDF5.svg)](https://github.com/hacs/integration)
+A responsive Home Assistant Lovelace card for UNINUS weather-station data, combining current conditions, device status, rain classification, and a historical wind rose in one card.
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/aukedejonga)
+UNINUS Weather Station Card 是一張適用於 Home Assistant 儀表板的響應式氣象站卡片。介面以繁體中文呈現即時溫度、濕度、照度、降雨、風速、風向、訊號與連線狀態，並整合歷史風向玫瑰圖。
 
-A Home Assistant Lovelace custom card to show wind speed and direction data in a Windrose diagram.
+> 本專案尚未宣稱已發布至 HACS 預設商店；請以「自訂儲存庫」方式安裝。此儲存庫也未宣稱已完成實體 Home Assistant 環境驗證。
 
-It's developed for wind data, but it's not limited to wind data only. It is also used for solar winds and lightning data.
-If you miss a feature that would make this card more useful for other use-cases, please submit an issue on GitHub and let me know.
+## 功能
 
-Look here for example configurations with screepcapture: [examples](EXAMPLES.md)
+- UNINUS 品牌化的氣象站總覽
+- 即時溫度、相對濕度、照度、降雨、風速與風向
+- 可選的訊號強度與連線狀態
+- 歷史風向玫瑰圖、期間選擇與前後移動
+- 可自訂降雨感測器的濕／乾狀態字串
+- 點擊可用數值即可開啟 Home Assistant `more-info`
+- 依卡片寬度自動切換寬版、緊湊與窄版配置
+- 沿用上游 Lovelace Windrose Card 的歷史資料、統計資料與進階圖表設定
 
-<img alt="Peview bars right" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/example/windrose-example-bottom.png?raw=true" width="482"/>
-<img alt="Peview bars right" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/example/windrose-play-demo-animated.gif?raw=true" width="482"/>
+## 畫面／示意
 
-## Install
+目前儲存庫未包含專屬於 UNINUS 外框的正式截圖。底層風向玫瑰圖的原始示意可參考：
 
-### HACS (recommended)
+- [靜態範例](./example/windrose-example-bottom.png)
+- [期間播放示意](./example/windrose-play-demo-animated.gif)
 
-This card is available in [HACS](https://hacs.xyz/) (Home Assistant Community Store).
-<small>*HACS is a third party community store and is not included in Home Assistant out of the box.*</small>
+上述圖片來自上游 Windrose Card，僅示意風向玫瑰圖引擎，不代表本卡片完整外觀。
 
-### Manual install
+## 安裝
 
-1. Download and copy `windrose-card.js` from the [latest release](https://github.com/aukedejong/ha-windrose-card/releases/latest) into your `config/www` directory.
+### HACS 自訂儲存庫
 
-2. Add the resource reference as decribed below.
+1. 在 HACS 開啟「自訂儲存庫」（Custom repositories）。
+2. 加入 `https://github.com/ivanlee1007/uninus-weather-station-card`。
+3. 類別選擇 **Dashboard**。
+4. 找到 **UNINUS Weather Station Card** 並安裝。
+5. 若 HACS 沒有自動加入前端資源，手動加入：
 
+```text
+/hacsfiles/uninus-weather-station-card/uninus-weather-station-card.js
+```
 
-### CLI install
+資源類型選擇 **JavaScript Module**。
 
-1. Move into your `config/www` directory.
+### 手動安裝
 
-2. Grab `windrose-card.js`:
+1. 執行 `npm ci && npm run build`，或取得儲存庫根目錄的 `uninus-weather-station-card.js`。
+2. 將檔案複製至 Home Assistant 的 `/config/www/uninus-weather-station-card/`。
+3. 在「設定 → 儀表板 → 右上角選單 → 資源」加入：
 
-  ```
-  $ wget https://github.com/aukedejong/lovelace-windrose-card/releases/latest/download/windrose-card.js
-  ```
+```text
+/local/uninus-weather-station-card/uninus-weather-station-card.js
+```
 
-3. Add the resource reference as decribed below.
-
-### Add resource reference
-
-If you configure Lovelace via YAML, add a reference to `windrose-card.js` inside your `configuration.yaml`:
-
-  ```yaml
-  resources:
-    - url: /local/lovelace-windrose-card/windrose-card.js?v=0.0.1
-      type: module
-  ```
-
-Else, if you prefer the graphical editor, use the menu to add the resource:
-
-1. Open any lovelace view
-2. Select from the three dot menu - "edit dashboard"
-3. The three dot menu is then replaced with another one, select the new three-dot menu (and do not select raw configuration editor*,
-it will tell you when you try to save it with the resource section, that for adding resources you have to use the three-dot menu choice "Manage Resources" instead).
-Select "Manage Resources"
-4. Click "Add Resource",
-5. Enter this for url: /hacsfiles/lovelace-windrose-card/windrose-card.js
-6. Click the check box for "Javascript Module" and
-7. Click the word "Create" in the corner to add the entry.
-
-### Example configurations:
-
-- See: [examples](./EXAMPLES.md)
-
-
-### Card options
-
-| Name                      |                  Type                   | Default | Required | Description                                                                                                                                                                                                            |
-|---------------------------|:---------------------------------------:|:-------:|:--------:|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| type                      |                 string                  |         |    x     | `custom:windrose-card`.                                                                                                                                                                                                |
-| title                     |                 string                  |         |    -     | The card title.                                                                                                                                                                                                        |
-| rose_config               |      [object](#Object-rose_config)      |         |    -     | Rose graph related configuration. All optional.                                                                                                                                                                        |
-| wind_direction_entity     | [object](#Object-wind_direction_entity) |         |    x     | The wind direction entity related configuration.                                                                                                                                                                       |
-| windspeed_entities        |  [object](#Object-windspeed_entities)   |         |    x     | One are more windspeed entities. Only the first is used for the windrose.                                                                                                                                              |
-| refresh_interval          |                 number                  |   300   |    -     | Refresh interval in seconds                                                                                                                                                                                            |
-| data_period               |      [object](#Object-data_period)      |         |    -     | Configure what data period to query. See object data_period below. When using an active period_selector buttons, this config is not needed.                                                                            |
-| buttons_config            |    [object](#Object-buttons_config)     |         |    -     | Button related configuration.                                                                                                                                                                                          |
-| windspeed_bar_location    |                 string                  | bottom  |    -     | Location of the speed bar graph: `bottom`, `right`                                                                                                                                                                     |
-| card_width (EXPERIMENTAL) |                 number                  |    4    |    -     | Defines the width of the card in sections layout. Default is 4, max is 16 (I think), full width.                                                                                                                       |
-| hide_windspeed_bar        |                 boolean                 |  false  |    -     | Hides all windspeed bars.                                                                                                                                                                                              |
-| direction_labels          |   [object](#Object-direction_labels)    |         |    -     | Windrose cardinal direction label configuration. Cardinal_direction_letters configuration is moved into this plus added features. Of this property is defined, the above cardinal_direction_letters config is ignored. |
-| compass_direction         |   [object](#Object-compass_direction)   |         |    -     | Configuration for using a compass sensor to rotate the windrose to the correct direction, for use on for example a boat.                                                                                               |
-| current_direction         |   [object](#Object-current_direction)   |         |    -     | Shows the last reported wind direction with a red arrow on the wind rose.                                                                                                                                              |
-| corner_info               |      [object](#Object-corner_info)      |         |    -     | Configuration for displaying entity states in the corners around the windrose.                                                                                                                                         |
-| text_blocks               |      [object](#Object-text_blocks)      |         |    -     | Configuration for displaying text above and below the windrose. It's possible to show interesting values about the dat measurements used by the card.                                                                  |
-| actions                   |        [object](#Object-actions)        |         |    -     | Configuration for HA actions, for example to display more-info popups.                                                                                                                                                 |
-| matching_strategy         |   [object](#Object-matching_strategy)   |         |    -     | How to match direction and speed measurements.                                                                                                                                                                         |
-| colors                    |        [object](#Object-colors)         |         |    -     | Configure colors for different parts of the windrose and windspeedbar. See object Colors.                                                                                                                              |
-| disable_animations        |                 boolean                 |  false  |    -     | Disables windrose leave and windbar animation. Current wind direction and speed arrow animation are not disabled.                                                                                                      |
-| log_level                 |                 string                  |  WARN   |    -     | Browser console log level, options: NONE, ERROR, WARN, INFO, DEBUG and TRACE                                                                                                                                           |
-
-
-## Object rose_config
-
-Wind rose graph related configuration.
-
-| Name                                |               Type               |      Default       | Required | Description                                                                                                                                         |
-|-------------------------------------|:--------------------------------:|:------------------:|:-------:|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| wind_direction_count                |              string              |         16         |    -    | How many wind direction the windrose can display, min. 4 max. 32                                                                                    |
-| background_image                    |              string              |                    |    -    | Displays a square image with the same size and exactly behind the outer circle of the windrose.                                                     |
-| rose_opacity                        |              number              |         1          |    -    | Opacity of the fill colors in the rose leaves and center cirlce. Values between 0 and 1. Usefull if you want the background to be visible.          |
-| clip_background_image               |             boolean              |       false        |    -    | Clips the background image, removed the part outside the outer circle of the windrose.                                                              |
-| circle_legend_text_size             |              number              |         30         |    -    | Text size of the percentage displayed in the windrose.                                                                                              |
-| windrose_draw_north_offset          |              number              |         0          |    -    | At what degrees the north direction is drawn. For example, if you want the windrose north orientation the same as your properties north orientation |
-| center_calm_percentage (DEPRECATED) |             boolean              |        true        |    -    | This options is replaced by the center_circle object and first_segment_in_leaves boolean. Show the calm speed percentage in the center of windrose. |
-| first_segment_in_leaves             |             boolean              |       false        |    -    | When the center circle is used for the calm percentage, the circle is the first segment. Then this percentage should not be in the leaves.          |
-| center_circle                       | [object](#Object-center_circle)] | defaults of object |    -    | Configuration related to the center circle, sizes and which value is shown.                                                                         |
-| cirlce_count                        |              number              |        auto        |    -    | Number of legend circles in the windrose graph.                                                                                                     |
-| outer_circle_percentage             |              number              |        auto        |    -    | Percentage of the outer largest legend circle.                                                                                                      |
-
-
-### Object center_circle
-
-The center_calm_percentage is replaced by the center_circle object and the first_segment_in_leaves property.
-
-The center_calm_percentage was default true, so the defaults of this object and first_segment_in_leaves result in the same view.
-Also, when this object is not configured, the defaults are used. So cards with no specific configuration, will not see a change.
-
-
-| Name      |               Type               |       Default       | Required | Description                                                                                                                |
-|-----------|:--------------------------------:|:-------------------:|:--------:|----------------------------------------------------------------------------------------------------------------------------|
-| enabled   |              string              |        true         |    -     | If the center circle is shown.                                                                                             |
-| size      |              string              |         60          |    -     | Size of the center circle.                                                                                                 |
-| text      |              string              | ${calm-percentage}% |    -     | Text rendered in the center circle. See [here](#How-to-display-specific-values) for available values. HTML is not allowed. |
-| text_size |              string              |         40          |    -     | Text size.                                                                                                                 |
+資源類型選擇 **JavaScript Module**。若以 YAML 管理資源：
 
 ```yaml
+lovelace:
+  resources:
+    - url: /local/uninus-weather-station-card/uninus-weather-station-card.js
+      type: module
+```
+
+## 最小設定
+
+以下六個實體是必要項目：風向、至少一個風速，以及溫度、濕度、照度、降雨。
+
+```yaml
+type: custom:uninus-weather-station-card
+wind_direction_entity:
+  entity: sensor.wind_direction
+windspeed_entities:
+  - entity: sensor.wind_speed
+weather_entities:
+  temperature:
+    entity: sensor.outdoor_temperature
+  humidity:
+    entity: sensor.outdoor_humidity
+  illuminance:
+    entity: sensor.outdoor_illuminance
+  rain:
+    entity: binary_sensor.rain
+```
+
+## 完整設定範例
+
+此範例只使用程式目前支援的設定。請將實體 ID 換成自己的實體。
+
+```yaml
+type: custom:uninus-weather-station-card
+name: UNINUS 校園氣象站
+device_label: 戶外環境氣象站
+refresh_interval: 300
+card_width: 8
+disable_animations: false
+log_level: WARN
+hide_windspeed_bar: true
+windspeed_bar_location: bottom
+
+weather_entities:
+  temperature:
+    entity: sensor.outdoor_temperature
+    name: 溫度
+    unit: °C
+  humidity:
+    entity: sensor.outdoor_humidity
+    name: 相對濕度
+    unit: "%"
+  illuminance:
+    entity: sensor.outdoor_illuminance
+    name: 光照度
+    unit: lx
+  rain:
+    entity: binary_sensor.rain
+    name: 降雨
+  signal_strength:
+    entity: sensor.weather_station_rssi
+    name: 訊號強度
+    unit: dBm
+  connectivity:
+    entity: binary_sensor.weather_station_connectivity
+    name: 連線
+
+rain_states:
+  wet: ["下雨中", "on", "wet"]
+  dry: ["沒下雨", "off", "dry"]
+
+wind_direction_entity:
+  entity: sensor.wind_direction
+  name: 風向
+  unit: °
+  use_statistics: false
+  direction_compensation: 0
+
+windspeed_entities:
+  - entity: sensor.wind_speed
+    name: 風速
+    speed_unit: auto
+    output_speed_unit: mps
+    use_statistics: false
+    windspeed_bar_full: true
+    speed_range_beaufort: true
+    current_speed_arrow: true
+
+buttons_config:
+  location: top
+  buttons:
+    - type: period_shift
+      button_text: 前移
+      shift_period: -8h
+    - type: period_selector
+      button_text: 1H
+      period_back: -1h
+    - type: period_selector
+      button_text: 8H
+      period_back: -8h
+      active: true
+    - type: period_selector
+      button_text: 1D
+      period_back: -1d
+    - type: period_selector
+      button_text: 10D
+      period_back: -10d
+    - type: period_shift
+      button_text: 後移
+      shift_period: +8h
+
 rose_config:
+  wind_direction_count: 16
+  first_segment_in_leaves: false
   center_circle:
     enabled: true
     size: 60
     text: ${calm-percentage}%
     text_size: 40
-```
 
-### Object data_period
+current_direction:
+  show_arrow: true
+  arrow_size: 50
 
-Only one of the options can be used at the same time.
-The statistics related properties overwrite the ones at the entity config level.
-
-| Name                                      |                      Type                      | Default | Required | Description                                                                                                                                                                                         |
-|-------------------------------------------|:----------------------------------------------:|:-------:|:--------:|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| use_statistics                            |                    boolean                     |  false  |    -     | Use Home Assistant 5 minute statistics data, works only if available for the entities. Can make fetching data faster. This settings overwrite the setting at the direction and speed entity config. |
-| statistics_period                         |                     string                     | 5minute |    -     | Statistics period, possible options: 5minute, hour, day, week, month and year. More info about [data retention](#Home-Assistant-data-retention)                                                     |
-| statistics_type                           |                     string                     |  mean   |    -     | Statistics type, possible options: min, max and mean. Only used for windspeed data, winddirection data only support mean.                                                                           |
-| preset_period                             |                     string                     |         |    -     | Preset periods, see list below this table.                                                                                                                                                          |
-| period_back (replaced hours_to_show)      | string [(period code)](#Period-code-explained) |         |    -     | Configure period from moment back in history till now. More info: [Period code explained](#Period-code-explained)                                                                                   |
-| from_hour_of_day                          |                     number                     |         |    -     | Show winddata from the configured hours till now. 0 is midnight, so only data of the current day is used. If the set hour is not yet arrived, data from the previous day from that hour is used.    |
-| from_period_ago (replaced from_hours_ago) | string [(period code)](#Period-code-explained) |         |    -     | Show winddata from the configured period ago till the to_period_ago value.                                                                                                                          |
-| to_period_ago (replace to_hours_ago)      | string [(period code)](#Period-code-explained) |         |    -     | Show winddata from the configured period from the from_period_ago value till this value.                                                                                                            |
-| from_date                                 |            string, ISO format date             |         |    -     | Show winddata from the configured date time till the to_date value.                                                                                                                                 |
-| to_date                                   |            string, ISO format date             |         |    -     | Show winddata from the configured from_date value till this value.                                                                                                                                  |
-
-#### List of preset_period options.
-
-- today
-- yesterday
-- last_7_days
-- last_30_days
-- this_week
-- last_week
-- this_month
-- last_month
-- last_6_months
-- this_year
-- last_year
-
-### Object buttons_config
-
-Renders buttons with different features.
-
-| Name            |               Type               | Default | Required | Description                                                                      |
-|-----------------|:--------------------------------:|:-------:|:--------:|----------------------------------------------------------------------------------|
-| location        |              string              |   top   |    -     | Location of the buttons, options: top, bottom, top-below-text, bottom-above-text |
-| buttons         |     [object](#Object-button)     |         |    -     | List of the period buttons.                                                      |
-| default_colors  | [object](#Object-button_colors)] |   red   |    -     | The text color of the active button.                                             |
-
-#### Object button
-
-Currently this card support 4 types buttons.
-More info and possible configuration options below.
-
-#### Button type period_selector
-Select a different time period. Uses the same configuration options as the data_period object.
-If you have an active button of this type, the data_period object is not needed.
-
-| Name                       |              Type               | Default | Required | Description                                                           |
-|----------------------------|:-------------------------------:|:-------:|:--------:|-----------------------------------------------------------------------|
-| type                       |             string              |         |    x     | Fixed: period_selector                                                |
-| button_text                |             string              |         |    x     | Button text.                                                          |
-| new_row                    |             boolean             |  false  |    -     | Force this and the next buttons to the next row.                      |
-| colors                     | [object](#Object-button_colors) |         |    -     | Button specific colors, overwrite the defaults buttons_config object. |
-| active                     |             boolean             |  false  |    -     | If button is active. This is the initial data period.                 |
-| The data period properties |                                 |         |    -     | See [object](#Object-data_period)                                     |
-
-```yaml
-buttons_config:
-  buttons:
-    - type: period_selector
-      button_text: 100h
-      period_back: -100h
-```
-
-#### Button type period_shift
-Shifts the time period with the set hours. This works for all period types. So if you have period_back set, it moves that period keeping the period length the same.
-Pressing again on the period_select button, reset the time period.
-It's not possible to shift the time to the future.
-There are no animations used for the transition.
-
-| Name         |                      Type                      | Default | Required | Description                                                                    |
-|--------------|:----------------------------------------------:|:-------:|:--------:|--------------------------------------------------------------------------------|
-| type         |                     string                     |         |    x     | Fixed: period_shift                                                            |
-| button_text  |                     string                     |         |    x     | Button text.                                                                   |
-| colors       |        [object](#Object-button_colors)         |         |    -     | Button specific colors, overwrite the defaults buttons_config object.          |
-| shift_period | string [(period code)](#Period-code-explained) |         |    -     | Shift the time period used the retrieve the data forward or backward in time.  |
-
-```yaml
-buttons_config:
-  buttons:
-    - type: period_shift
-      button_text: "-1h"
-      shift_period: -1h
-    - type: period_shift
-      button_text: "+1h"
-      shift_period: +1h
-```
-
-#### Button type period_shift_play (EXPERIMENTAL)
-Animate the changes in de the windrose during a time period.
-The period configured in the data period properties is the time used for the animation.
-The period_hours configures the period use for the windrose.
-The step_hours moves the period forward in time, until it reached the and of the configured period.
-There are no animations used for the transition.
-
-| Name                       |                      Type                      | Default | Required | Description                                                                      |
-|----------------------------|:----------------------------------------------:|:-------:|:--------:|----------------------------------------------------------------------------------|
-| type                       |                     string                     |         |    x     | Fixed: period_shift_play                                                         |
-| button_text                |                     string                     |         |    x     | Button text.                                                                     |
-| colors                     |        [object](#Object-button_colors)         |         |    -     | Button specific colors, overwrite the defaults buttons_config object.            |
-| The data period properties |                                                |         |    x     | See [object](#Object-data_period), the time period the anmiation is using.       |
-| step_period                | string [(period code)](#Period-code-explained) |         |    x     | Period to move for the next frame.                                               |
-| window_period              | string [(period code)](#Period-code-explained) |         |    x     | The window period used for the windrose calculation                              |
-| delay                      |                     number                     |         |    x     | Delay between frames, this is without the calculation time needed for the frame. |
-
-
-```yaml
-buttons_config:
-  buttons:
-    - type: period_shift_play
-      preset_period: last_6_months
-      button_text: Play
-      step_hours: 12
-      period_hours: 240
-      delay: 50
-      use_statistics: true
-      statistics_period: hour
- ```
-
-#### Button type windrose_speed_selector
-The windrose diagram uses a direction and speed data. Before only the first configured speed sensor was used for the speed data.
-Now the windspeed sensor used, can be changed with this button.
-
-In the windspeed_entties configuration, the use_for_windrose property is added, to set the default entity used for the windrose.
-There are no animations used for the transition.
-
-| Name                       |              Type               | Default | Required | Description                                                                    |
-|----------------------------|:-------------------------------:|:-------:|:--------:|--------------------------------------------------------------------------------|
-| type                       |             string              |         |    x     | Fixed: period_shift                                                            |
-| button_text                |             string              |         |    x     | Button text.                                                                   |
-| colors                     | [object](#Object-button_colors) |         |    -     | Button specific colors, overwrite the defaults buttons_config object.          |
-| active                     |             boolean             |  false  |    -     | If button is active. This is the initial speed entity used for the rose graph. |
-| windspeed_entity_index     |             number              |         |    x     | Index of windspeed entity to use for the windrose graph. First is index 0.     |
-
-```yaml
-buttons_config:
-  buttons:
-    - type: windrose_speed_selector
-      windspeed_entity_index: 0
-      active: true
-      button_text: Windspeed
-    - type: windrose_speed_selector
-      windspeed_entity_index: 1
-      button_text: Gust
-```
-
-### Object button_colors
-
-Can be configured on buttons_config level as default for all buttons.
-Can also be configured on button level for specific button colors.
-
-| Name                |              Type               | Default | Required | Description                                   |
-|---------------------|:-------------------------------:|:-------:|:--------:|-----------------------------------------------|
-| active_color        |             string              |   red   |    -     | The color of the active button.               |
-| active_bg_color     |             string              | inherit |    -     | The background color of the active button.    |
-| active_border_color |             string              | inherit |    -     | The border color of the active button.        |
-| color               |             string              | inherit |    -     | The text color of the inactive buttons.       |
-| bg_color            |             string              | inherit |    -     | The background color of the inactive buttons. |
-| border_color        |             string              | inherit |    -     | The border color of the inactive buttons.     |
-
-```yaml
-buttons_config:
-  location: bottom
-  default_colors:
-    active_color: black
-    active_bg_color: yellow
-    active_border_color: red
-    color: red
-    bg_color: inherit
-    border_color: gray
-  buttons:
-    - type: period_shift
-      button_text: "-1h"
-      hours: -1
-      colors:
-        color: blue
-```
-
-### Period code explained
-
-Old versions, hours_to_show, from_hours_ago and to_hours_ago only supported hours. Now al sorts of periods can be used in combination with each-other.
-
-This code is used by the following property's:
-
-General period definition for
-- period_back
-- from_period_argo / to_period_ago
-Buttons:
-- Type: period_shift:
-- Config: shift_period
-- Type: period_shift_play
-- Config: step_period, window_period
-
-| Options     | Example | Description                        |
-|-------------|:-------:|------------------------------------|
-| -ns / +ns   |  -10s   | 10 seconds before now              |
-| -nmi / +nmi |  -10mi  | 10 minutes before now              |
-| -nh / +nh   |  -10h   | 10 hours before now                |
-| -nd / +nd   |  -10d   | 10 days before now                 |
-| -nw / +nw   |   -5w   | 5 week before now                  |
-| -nm / +nm   |   -2m   | 2 month before now                 |
-| -nq / +nq   |   -1q   | 1 year quater before now           |
-| -ny / +ny   |   -1y   | 1 year before now                  |
-| Combination | -5w+2d  | 5 weeks before then 2 days forward |
-
-
-### Home Assistant data retention
-
-The period_back option does not have a limit yet. When set higher then is available in Home Assistant, the card will not show a message.
-Home Assistant has a default entity state retention of 10 days. This can be changed in the recorder configuration. See [https://www.home-assistant.io/integrations/recorder/#purge_keep_days](https://www.home-assistant.io/integrations/recorder/#purge_keep_days).
-
-Information about the retrieved entity states, counts, dates can be writen to the browser console (F12).
-Set config  log_measurement_counts to true.
-
-```
-matching_strategy:
-  name: speed-first
-  log_measurement_counts: true
-```
-
-#### State data
-When using entity state data, using an period_back of more then 240 hours (10 days, in reality it's a little bit more) will not give the card more measurements.
-
-#### Statistics data
-When using statistics data, the card uses 5 minute period by default. This is short-term statistics and will not contain more then 10 days (default) history.
-You can change the default period with the statistics_period config.
-Keep in mind that the measurement interval for the direction and speed sensor should not differ very much for the best results.
-So, using monthly for the direction sensor and a 5minute period for the speed sensor will not give a graph with useful information I think.
-
-The statistics_type options is only supported by the wind speed sensor. More info [https://www.home-assistant.io/integrations/statistics/](https://www.home-assistant.io/integrations/statistics/).
-
-Info about circular statistics: [https://en.wikipedia.org/wiki/Circular_mean](https://en.wikipedia.org/wiki/Circular_mean).
-
-More info about Home Assistant statistics data: [https://data.home-assistant.io/docs/statistics/](https://data.home-assistant.io/docs/statistics/).
-
-### Object wind_direction_entity
-
-As of version 1.8.2 the direction unit is determined automatic.
-When the state is numeric, a degree value is assumed. When the state is letters, the direction is determined with the letter combination.
-
-| Name                   |  Type   | Default | Required | Description                                                                                                                                                                                                                               |
-|------------------------|:-------:|:-------:|:--------:|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| entity                 | string  |         |    x     | Wind direction entity                                                                                                                                                                                                                     |
-| attribute              | string  |         |    -     | If used, not the state but the attributes value is displayed.                                                                                                                                                                             |
-| use_statistics         | boolean |  false  |    -     | Use Home Assistant 5 minute statistics data, works only if available for this entity. Can make fetching data faster.                                                                                                                      |
-| statistics_period      | string  | 5minute |    -     | Statistics period, possible options: 5minute, hour, day, week, month and year. More info about [data retention](#Home-Assistant-data-retention)                                                                                           |
-| direction_compensation | number  |    0    |    -     | Compensate the measured direction in degrees.                                                                                                                                                                                             |
-| direction_letters      | string  |  NESWX  |    -     | Only used when the state consists of letters. Some weather integrations use language specific letters. With this property you can change the default letters used. See https://en.wikipedia.org/wiki/Points_of_the_compass for more info. |
-
-
-### Object windspeed_entities
-
-See [here](#Examples-using-custom-speed-ranges) for some example speed ragne configurations.
-
-| Name                         |                  Type                  |           Default            | Required | Description                                                                                                                                                                                          |
-|------------------------------|:--------------------------------------:|:----------------------------:|:--------:|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| entity                       |                 string                 |                              |    x     | Wind speed entity.                                                                                                                                                                                   |
-| attribute                    |                 string                 |                              |    -     | If used, not the state but the attributtes value is deplayed.                                                                                                                                        |
-| name                         |                 string                 |                              |    -     | Label, displayed with the windspeed bar.                                                                                                                                                             |
-| use_statistics               |                boolean                 |            false             |    -     | Use Home Assistant 5 minute statistics data, works only if available for this entity. Can make fetching data faster.                                                                                 |
-| statistics_period            |                 string                 |           5minute            |    -     | Statistics period, possible options: 5minute, hour, day, week, month and year. More info about [data retention](#Home-Assistant-data-retention)                                                      |
-| statistics_type              |                 string                 |             mean             |    -     | Statistics type, possible options: min, max and mean                                                                                                                                                 |
-| use_for_windrose             |                boolean                 |      first entity true       |    -     | If true, this entity's data is used for the windrose graph. Can be changed with button type windrose_speed_selector                                                                                  |
-| speed_unit                   |   [string](#Windspeed-unit-options)    |             auto             |    -     | Windspeed unit of measurement, see Windspeed unit options bellow. When the speed_range_beaufort property is not set or set to true, the bars will show Beaufort ranges.                              |
-| windspeed_bar_full           |                boolean                 |             true             |    -     | When true, renders all wind ranges, when false, doesn't render the speed range without measurements.                                                                                                 |
-| output_speed_unit            |                 string                 |             mps              |    -     | Windspeed unit used on card, see Windspeed unit options bellow.                                                                                                                                      |
-| output_speed_unit_label      |                 string                 |                              |    -     | Overwrite the output speed units name, only for display.                                                                                                                                             |
-| speed_range_beaufort         |                boolean                 |             true             |    -     | Uses the Beaufort speed ranges. The exact Beaufort ranges depend on the output windspeed unit. Default is true, when you want to show other speed unit on the bar graph, set this property to false. |
-| speed_range_step             |                 number                 | depends on output speed unit |    -     | Sets the speed range step to use. Not possible for output speed unit bft (Beaufort) .                                                                                                                |
-| speed_range_max              |                 number                 | depends on output speed unit |    -     | Sets the speed range max to use. Not possible for output speed unit bft (Beaufort). For example: step 5, max 20 creates ranges: 0-5, 5-10, 10-15, 15-20, 20-infinity                                 |
-| speed_ranges                 |     [object](#Object-speed_ranges)     | depends on output speed unit |    -     | Define custom speedranges and colours.                                                                                                                                                               |
-| dynamic_speed_ranges         | [object](#Object-dynamic_speed_ranges) |                              |    -     | Speed range step and max config, depending on the average wind speed                                                                                                                                 |
-| current_speed_arrow          |                boolean                 |            false             |    -     | Animates an arrow on the windspeed bar indicating the current wind speed.                                                                                                                            |
-| current_speed_arrow_size     |                 number                 |              40              |    -     | Current speed arrow size                                                                                                                                                                             |
-| current_speed_arrow_location |                 string                 |        above or left         |    -     | Current speed arrow location, options: above, below, left and right. Options are valid depending on speed bar location.                                                                              |
-| bar_render_scale             |    [string](#Render-scale-options)     |      windspeed_relative      |    -     | Segment scales in the windbar, options: absolute, windspeed_relative and percentage_relative.                                                                                                        |
-| bar_label_text_size          |                 number                 |              40              |    -     | Bar name en unit text size.                                                                                                                                                                          |
-| bar_speed_text_size          |                 number                 |              40              |    -     | Bar speed text size.                                                                                                                                                                                 |
-| bar_percentage_text_size     |                 number                 |              40              |    -     | Bar percentage text size.                                                                                                                                                                            |
-| speed_compensation_factor    |                 number                 |              1               |    -     | Compensation factor of the windspeed after conversion to the output speed unit.                                                                                                                      |
-| speed_compensation_absolute  |                 number                 |              0               |    -     | Increases or decreases the windspeed after conversion to the output speed unit. WHen using both factor and this, this one is first calculated.                                                       |
-
-
-### Render scale options:
-
-| Name                | Description                                               |                                                                                                                                                                    | Default |
-|---------------------|-----------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-------:|
-| absolute            | Evenly distributes the segments.                          | <img alt="Pevriew" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/example/windbar-example-absolute.png?raw=true" width="412"/>            |    | 
-| windspeed_relative  | Renders the segments relative to the speedrange size.     | <img alt="Pevriew" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/example/windbar-example-windspeed-relative.png?raw=true" width="412"/>  | x  | 
-| percentage_relative | Renders the segments relative to the percentage measured. | <img alt="Pevriew" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/example/windbar-example-percentage-relative.png?raw=true" width="412"/> |    | 
-
-
-### Windspeed unit options:
-
-Default is auto. When no windspeed unit is configured, the unit_of_measurement from Home Assisstant is used.
-When using entity attributes, the speed unit will probably not be auto determined. Then you need to add the speed_unit property.
-
-When your windspeed entity uses an unit of measurement not mentioned in the table below, please open an issue in GitHub.
-
-| Name     |    Description     | Input | Output | Recognized HA units of measurements |
-|----------|:------------------:|:-----:|:------:|-------------------------------------|
-| auto     |     automatic      |   x   |        |                                     |
-| Beaufort |      Beaufort      |   x   |        | Beaufort                            |
-| mps      | metres per second  |   x   |   x    | mps, m/s                            |
-| kph      | kilometer per hour |   x   |   x    | kph, km/h                           |
-| mph      |   miles per hour   |   x   |   x    | mps, m/h                            |
-| fps      |  feet per second   |   x   |   x    | fps, f/s                            |
-| knot     |       knots        |   x   |   x    | knots, kts, knts, kn, knot          |
-
-
-### Object speed_ranges
-
-| Name       |  Type  | Default | Required | Description                  |
-|------------|:------:|:-------:|:--------:|------------------------------|
-| from_value | number |         |    x     | Start speed of a speed range |
-| color      | string |         |    x     | Color CSS value              |
-
-<details>
-<summary>It can be convenient to generate speed_ranges using Python. Credits to @reidprichard</summary>
-
-Just enter in the name of any colormap from [this page](https://matplotlib.org/stable/gallery/color/colormap_reference.html),
-along with your desired upper and lower bounds and the increment from one range to the next.
-
-```yaml
-windspeed_entities:
-  - entity: sensor.wind_speed
-    name: Speed
-    speed_range_beaufort: false
-    speed_ranges:
-      - from_value: 0
-        color: rgb(0,255,0)
-      - from_value: 5
-        color: blue
-      - from_value: 10
-        color: hsl(200, 100%, 60%)
-      - from_value: 20
-        color: orange
-      - from_value: 40
-        color: red
-```
-
-```python3
-from matplotlib import colormaps
-MIN_SPEED = 0
-MAX_SPEED = 50
-SPEED_INCREMENT = 10
-COLORMAP_NAME = "YlGnBu" # See https://matplotlib.org/stable/gallery/color/colormap_reference.html
-cmap = colormaps[COLORMAP_NAME]
-count = (MAX_SPEED-MIN_SPEED)//SPEED_INCREMENT+1
-print("speed_ranges:")
-for i in range(count):
-    f = i/(count-1)
-    color_rgba = cmap(f)
-    color_scaled = f"rgb({','.join([str(int(n*255)) for n in color_rgba[:3]])})"
-    speed = MIN_SPEED + (MAX_SPEED - MIN_SPEED)*f
-    print(f'  - from_value: {speed:.1f}\n    color: {color_scaled}')
-```
-</details>
-
-### Object dynamic_speed_ranges
-
-When using dynamic speed range, speed_range_beaufort should be false.
-
-| Name          |  Type   | Default | Required | Description                                                                                                                                                                      |
-|---------------|:-------:|:-------:|:--------:|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| average_above | number  |         |    x     | Average wind speed above or equal this value. Option with 0 is required. Speed defined here should be in the output speed unit. If none is defined, it's meter per second (mps). |
-| step          | number  |         |    x     | Range steps to be used if average speed is above configurated value.                                                                                                             |
-| max           | number  |         |    x     | Max speed, used to calculate how many steps are used.                                                                                                                            |
-
-```yaml
-windspeed_entities:
-  - entity: sensor.wind_speed
-    name: Speed
-    speed_range_beaufort: false
-    dynamic_speed_ranges:
-      - average_above: 0
-        step: 2
-        max: 10
-      - average_above: 10
-        step: 4
-        max: 20
-      - average_above: 15
-        step: 8
-        max: 30
-```
-
-### Object direction_labels
-
-| Name                                         |  Type   | Default | Required | Description                                                                                                                                                                          |
-|----------------------------------------------|:-------:|:-------:|:--------:|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| cardinal_direction_letters                   | number  |  NESW   |          | The property is used to configure what is displayed on the windrose. Only 4 letters allowed. It is not used to parse sensor states. The direction_letters property is used for that. |
-| show_cardinal_directions                     | boolean |  true   |          | If true, renders the cardinal direction labels.                                                                                                                                      |
-| show_intercardinal_directions                | boolean |  false  |          | If true, renders the intercardinal directions labels.                                                                                                                                |
-| show_secondary_intercardinal_directions      | boolean |  false  |          | If true, renders the secondary intercardinal direction labels.                                                                                                                       |
-| cardinal_directions_text_size                | number  |   50    |          | Cardinal direction label text size.                                                                                                                                                  |
-| intercardinal_directions_text_size           | number  |   40    |          | Intercardinal direction label text size.                                                                                                                                             |
-| secondary_intercardinal_directions_text_size | number  |   30    |          | Secondary intercardinal direction label text size.                                                                                                                                   |
-| custom_labels                                | object  |         |          | Custom labels, to override auto generated labels base on the cardinal_direction_letters property. More info below.                                                                   |
-
-The 4 letters of cardinal_direction_letters property are used to construct all direction labels.
-To use custom labels, add the custom_labels property. See example below.
-
-It's not mandatory to define all custom_labels options.
-Just define the ones you want to overwrite with a custom text.
-
-```yaml
 direction_labels:
-   cardinal_direction_letters: ABCD
-   show_cardinal_directions: true
-   show_intercardinal_directions: true
-   show_secondary_intercardinal_directions: true
-   cardinal_directions_text_size: 60
-   intercardinal_directions_text_size: 45
-   secondary_intercardinal_directions_text_size: 30
-   custom_labels:
-      n: A
-      e: B
-      s: C
-      w: D
-      ne: E
-      se: F
-      sw: G
-      nw: H
-      nne: I
-      ene: J
-      ese: K
-      sse: L
-      ssw: M
-      wsw: N
-      wnw: O
-      nnw: P
+  cardinal_direction_letters: NESW
+  show_cardinal_directions: true
+  show_intercardinal_directions: true
+
+matching_strategy:
+  name: direction-first
+  log_measurement_counts: false
 ```
 
-### Object current_direction
+## 根層設定選項
 
-Shows the current wind direction. The arrow is pointing too where to wind is flowing too.
-When the sensor state is not a direction a red center dot is displayed.
-Some sensors can have a value like CALM or VRB, indicating there is no direction measured.
+`name`、`device_label`、`weather_entities` 與 `rain_states` 是 UNINUS 外框新增的 API；其餘列出的設定由內建 Windrose 引擎實際讀取。
 
-| Name                       |  Type   | Default | Required | Description                                                                                                                                     |
-|----------------------------|:-------:|:-------:|:--------:|-------------------------------------------------------------------------------------------------------------------------------------------------|
-| show_arrow                 | boolean |  false  |    x     | Start speed of a speed range                                                                                                                    |
-| arrow_size                 | number  |   50    |          | Size of the arrow                                                                                                                               |
-| center_circle_size         | number  |   30    |          | Size of the center circle, only when not using center_calm_percentage. Then a red circle is displayed around the center percentage.             |
-| hide_direction_below_speed | number  |         |          | When current windspeed (output speed unit is used) is equal or below this value, the arrow is hidden and the center red dot or circle is shown. |                                                                                                                                      |
+| 選項 | 型別 | 必要 | 預設 | 說明 |
+|---|---|:---:|---|---|
+| `type` | string | 是 | — | 固定為 `custom:uninus-weather-station-card`。 |
+| `name` | string | 否 | `UNINUS 氣象站` | 卡片主標題。空字串也會使用預設值。 |
+| `device_label` | string | 否 | `外部環境氣象站` | 裝置副標題。 |
+| `weather_entities` | object | 是 | — | 即時環境與裝置實體，見下表。 |
+| `rain_states` | object | 否 | 見「降雨狀態」 | 自訂濕／乾狀態字串陣列。 |
+| `wind_direction_entity` | object | 是 | — | 歷史與即時風向實體，見下表。 |
+| `windspeed_entities` | object[] | 是 | — | 至少一個；第一個也顯示為目前風速。 |
+| `refresh_interval` | number | 否 | `300` | 重新抓取歷史資料的秒數。 |
+| `data_period` | object | 否 | — | 固定查詢期間；若使用啟用中的 `period_selector`，請勿同時設定。 |
+| `buttons_config` | object | 否 | 內建 1H／8H／1D／10D 與前後移按鈕 | 支援 `period_selector`、`period_shift`、`period_shift_play`、`windrose_speed_selector`。 |
+| `hide_windspeed_bar` | boolean | 否 | `true` | 隱藏 Windrose 引擎的速度條；不影響右側目前風速。 |
+| `windspeed_bar_location` | `bottom` \| `right` | 否 | `bottom` | 未隱藏時的速度條位置。 |
+| `card_width` | number | 否 | `4` | Home Assistant sections 配置的建議欄寬。 |
+| `disable_animations` | boolean | 否 | `false` | 關閉玫瑰葉片與速度條動畫。 |
+| `rose_config` | object | 否 | 引擎預設 | 玫瑰圖方向數、圓圈、背景、透明度等。 |
+| `current_direction` | object | 否 | `{show_arrow: true}` | 目前風向箭頭設定。 |
+| `direction_labels` | object | 否 | 引擎預設 | 方位字母、層級、字級與自訂標籤。 |
+| `matching_strategy` | object | 否 | `direction-first` | 可用 `direction-first`、`speed-first`、`time-frame`、`full-time`。 |
+| `compass_direction` | object | 否 | 關閉 | 以方位實體旋轉玫瑰圖。 |
+| `corner_info` | object | 否 | — | 玫瑰圖四角的額外實體資訊。 |
+| `text_blocks` | object | 否 | — | 玫瑰圖上／下方文字與統計模板。 |
+| `actions` | object | 否 | — | Windrose 區域、速度條與角落的 HA 動作。 |
+| `colors` | object | 否 | 引擎／主題預設 | 玫瑰圖與速度條顏色。 |
+| `log_level` | string | 否 | `WARN` | `NONE`、`ERROR`、`WARN`、`INFO`、`DEBUG` 或 `TRACE`。 |
 
+### `weather_entities` 實體
 
-### Object compass_direction
+| 鍵 | 必要 | 用途 |
+|---|:---:|---|
+| `temperature` | 是 | 溫度與頁尾最後更新時間。 |
+| `humidity` | 是 | 相對濕度。 |
+| `illuminance` | 是 | 光照度。 |
+| `rain` | 是 | 降雨原始狀態與分類。 |
+| `signal_strength` | 否 | 頁首狀態與裝置狀態。 |
+| `connectivity` | 否 | 頁首與裝置連線狀態；`off`、`false`、`disconnected` 顯示為非連線。 |
 
-This configuration is only needed if you want the windrose to rotate on a compass entity.
-Useful on for example a boat.
-You can also make a helper number entity to rotate the windrose on manual input.
+每個 `weather_entities` 項目都支援：
 
-| Name        |  Type   | Default | Required | Description                                                   |
-|-------------|:-------:|:-------:|:--------:|---------------------------------------------------------------|
-| auto_rotate | boolean |         |    x     | Use auto rotation, false to turn off.                         |
-| entity      | string  |         |    x     | Compass or other direction entity, needs degrees as unit.     |
-| attribute   | string  |         |          | If used, not the state but the attributtes value is deplayed. |
-| as_heading  | boolean |  false  |          | Use compass degrees as heading instead of north direction.    |
+| 選項 | 型別 | 必要 | 預設／行為 |
+|---|---|:---:|---|
+| `entity` | string | 是 | Home Assistant 實體 ID。 |
+| `name` | string | 否 | 使用實體的 `friendly_name`；若也沒有則留空／使用介面標籤。 |
+| `unit` | string | 否 | 使用實體的 `unit_of_measurement`。 |
 
+### `wind_direction_entity`
 
-### Object corner_info
+| 選項 | 型別 | 必要 | 預設／說明 |
+|---|---|:---:|---|
+| `entity` | string | 是 | 風向實體 ID。數值視為角度，字串可用方位字母。 |
+| `name` | string | 否 | 目前風向的顯示名稱。 |
+| `unit` | string | 否 | 目前風向顯示單位；否則使用實體單位。 |
+| `attribute` | string | 否 | 使用指定 attribute 而非 state 取得歷史資料；不可與統計資料併用。 |
+| `use_statistics` | boolean | 否 | `false`；使用 Home Assistant statistics。 |
+| `statistics_period` | string | 否 | `5minute`；也支援 `hour`、`day`、`week`、`month`、`year`。 |
+| `direction_compensation` | number | 否 | `0`；角度補償。 |
+| `direction_letters` | string | 否 | 五個解析字元，例如 `NESWX`。 |
 
-Configuration for displaying information in the corners around the windrose.
+### `windspeed_entities[]`
 
-| Name         |  Type  | Default | Required | Description                          |
-|--------------|:------:|:-------:|:--------:|--------------------------------------|
-| top_left     | object |         |          | Configration for top left corner     |
-| top_right    | object |         |          | Configration for top right corner    |
-| bottom_left  | object |         |          | Configration for bottom left corner  |
-| bottom_right | object |         |          | Configration for bottom right corner |
+| 選項 | 型別 | 必要 | 預設／說明 |
+|---|---|:---:|---|
+| `entity` | string | 是 | 風速實體 ID。 |
+| `name` | string | 否 | 顯示名稱。 |
+| `unit` | string | 否 | UNINUS 目前風速顯示單位；否則使用實體單位。 |
+| `attribute` | string | 否 | 使用指定 attribute 取得歷史資料；不可與統計資料併用。 |
+| `use_statistics` | boolean | 否 | `false`。 |
+| `statistics_period` | string | 否 | `5minute`；亦支援 `hour`、`day`、`week`、`month`、`year`。 |
+| `statistics_type` | `min` \| `max` \| `mean` | 否 | `mean`。 |
+| `use_for_windrose` | boolean | 否 | 若皆未指定，使用第一個實體。 |
+| `speed_unit` | string | 否 | `auto`；或 `mps`、`bft`、`kph`、`mph`、`fps`、`knots`。 |
+| `output_speed_unit` | string | 否 | `mps`；或 `kph`、`mph`、`fps`、`knots`。 |
+| `output_speed_unit_label` | string | 否 | 覆寫輸出單位文字。 |
+| `windspeed_bar_full` | boolean | 否 | `true`；是否顯示所有速度區間。 |
+| `speed_range_beaufort` | boolean | 否 | `true`；使用蒲福風級區間。 |
+| `speed_range_step` / `speed_range_max` | number | 否 | 自訂等距區間，兩者須同時設定，且須關閉蒲福區間。 |
+| `speed_ranges` | object[] | 否 | 自訂 `{from_value, color}` 區間；須從 `0` 開始並關閉蒲福區間。 |
+| `dynamic_speed_ranges` | object[] | 否 | 自訂 `{average_above, step, max}`；第一項須從 `average_above: 0` 開始。 |
+| `current_speed_arrow` | boolean | 否 | `false`。 |
+| `current_speed_arrow_size` | number | 否 | `40`。 |
+| `current_speed_arrow_location` | string | 否 | 底部速度條為 `above`，右側速度條為 `left`。 |
+| `bar_render_scale` | string | 否 | `windspeed_relative`；亦可為 `absolute`、`percentage_relative`。 |
+| `bar_label_text_size` | number | 否 | `40`。 |
+| `bar_speed_text_size` | number | 否 | `40`。 |
+| `bar_percentage_text_size` | number | 否 | `40`。 |
+| `speed_compensation_factor` | number | 否 | `1`。 |
+| `speed_compensation_absolute` | number | 否 | `0`。 |
 
-###  Object top_left, top_right, bottom_left and bottom_right
+## 降雨狀態預設值
 
-| Name              |  Type  |       Default        | Required | Description                                                                                                                   |
-|-------------------|:------:|:--------------------:|:--------:|-------------------------------------------------------------------------------------------------------------------------------|
-| label             | string |                      |          | Label                                                                                                                         |
-| unit              | string |                      |          | Unit, displayed after the state, without a space. If you need space, add it to the config.                                    |
-| color             | string | --primary-text-color |          | Color of the text.                                                                                                            |
-| label_text_size   | number |          50          |          | The text size of the label.                                                                                                   |
-| value_text_size   | number |          80          |          | The text size of the entity's state.                                                                                          |
-| entity            | string |                      |    x     | State of the entity will be displayed                                                                                         |
-| attribute         | string |                      |          | If used, not the state but the attributes value is deplayed.                                                                  |
-| input_unit        | string |                      |          | Input unit, not automatically determined. See for options [Unit conversion](#Corner-Info-unit-conversion)                     |
-| output_unit       | string |                      |          | Output unit                                                                                                                   |
-| precision         | string |                      |          | Overwrites (if available) the precision of the entity. For rounding the value, for example after converting to an other unit. |
-| direction_letters | string |         NESW         |          | The cardinal direction letters used for winddirection conversion. When using 4 letters, the x directions will not be used.    |
-
-### Corner Info unit conversion
-
-Supported unit types for windspeed sensors:
-
-| Config | Description        |
-|--------|--------------------|
-| bft    | Beaufort           |
-| mps    | Meter per second   |
-| kph    | Kilometer per hour |
-| mph    | Miles per hour     |
-| fps    | Feet per second    |
-| knots  | Knots              |
-
-Supported unit types for wind directions sensors:
-
-| Config  | Description                                 |
-|---------|---------------------------------------------|
-| degrees | Direction in degreees, number from 0 to 359 |
-| letters | Cardinal direction letters                  |
-
-
-The units degrees and letters can only be used in combination with each other.
-The card does not check the sensor type you are using. So, converting a light switch from degreees to letters will result in errors in the browsers console.
-
-### Example corner_info yaml
-```yaml
-corner_info:
-  top_left:
-    label: Current gust speed
-    unit: ' m/s'
-    entity: sensor.gorredijk_wind_gust
-    label_text_size: 40
-    value_text_size: 30
-    input_unit: kph
-    output_unit: mps
-    precision: 2
-  top_right:
-    label: Wind direction
-    unit: °
-    color: red
-    entity: sensor.gorredijk_wind_direction_azimuth
-    input_unit: degrees
-    output_unit: letters
-    direction_letters: NOZWX
-  bottom_left:
-    label: Compass
-    unit: °
-    entity: input_number.compass
-```
-
-### Object text_blocks
-
-Configuration for displaying information above and below the windrose.
-The buttons can be configured above or below the text.
-
-Specific values can be displayed in the text.
-
-
-| Name         |  Type  | Default | Required | Description                               |
-|--------------|:------:|:-------:|:--------:|-------------------------------------------|
-| top          | object |         |          | Configration for text above the windrose. |
-| bottom       | object |         |          | Configration for text below the windrose. |
-
-
-###  Object top and bottom
-
-| Name              |  Type  |       Default        | Required | Description                                             |
-|-------------------|:------:|:--------------------:|:--------:|---------------------------------------------------------|
-| text              | string |                      |          | Text to show, more info below on how to display values. |
-| text_size         | string |                      |          | Text size in css pixels                                 |
-| text_color        | string | --primary-text-color |          | Text color, css value                                   |
-
-### How to display specific values
-
-You can use the values in the table below and any Home Assistant entity state or attribute.
-The name should be wrapped like this:
-
-Values table below: ```${match-count}```
-
-For entity state: ```${sensor.windspeed}```
-
-For entity attribute: ```${sensor.windspeed.unit_of_measurement}```
-
-Html and styling is supported in the text. A HTML table is used in the example below.
-To prevent HA from reformating your config, use |-
+比對會先去除前後空白並忽略大小寫：
 
 ```yaml
-text_blocks:
-   top:
-      text: |-
-         <table>
-             <tr>
-                 <td>Direction measure’s:</td>
-                 <td>${direction-count}</td>
-                 <td>Minimal speed:</td>
-                 <td>${min-speed}</td>
-             </tr>
-             <tr>
-                 <td>Speed measure’s.:</td>
-                 <td>${speed-1-count}</td>
-                 <td>Maximum speed:</td>
-                 <td>${max-speed}</td>
-             </tr>
-             <tr>
-                 <td>Match count:</td>
-                 <td>${match-count}</td>
-                 <td>Average speed:</td>
-                 <td>${average-speed}</td>
-             </tr>
-             <tr>
-                 <td>Period hours</td>
-                 <td>${period-hours}</td>
-                 <td>Calm percentage:</td>
-                 <td>${calm-percentage}%</td>
-             </tr>
-             <tr>
-                 <td>Temperature</td>
-                 <td>${weather.home.temperature} °C</td>
-                 <td>Wind speed</td>
-                 <td>${sensor.home_wind_speed} Bft</td>
-             </tr>
-             <tr>
-                 <td>First match time</td><td colspan="2">${date-first-match}, ${time-first-match}</td>
-             </tr>
-             <tr>
-                 <td>Last match time</td><td colspan="2">${date-last-match}, ${time-last-match}</td>
-             </tr>
-         </table>
+rain_states:
+  wet: ["下雨中", "on"]
+  dry: ["沒下雨", "off"]
 ```
 
-Available values:
+- 符合 `wet`：顯示「偵測到降雨」。
+- 符合 `dry`：顯示「目前沒有降雨」。
+- 有值但未符合：顯示「未知降雨狀態」。
+- 實體不存在、`unknown` 或 `unavailable`：顯示資料無法使用。
 
-| Name                                                                                          | Description                                                                                                                                         |
-|-----------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
-| start-time<br/>start-date                                                                     | Start date and time 0f the active period, taking into account changes with the time_shift button.                                                   |
-| end-time<br/>end-date                                                                         | End date and time 0f the active period, taking into account changes with the time_shift button.                                                     |
-| date-first-direction<br/>time-first-direction<br/>date-last-direction<br/>time-last-direction | Date and time of the first and last direction measurements.                                                                                         |
-| direction-count                                                                               | Amount of measurement used by the windrose.                                                                                                         |
-| date-first-speed-x</br>time-first-speed-x<br/>date-last-speed-x<br/>time-last-speed-x         | Date and time of the first and last speed measurements. The x should be the index of the windspeed sensor. Index meaning 0 for the first.           | 
-| speed-x-count                                                                                 | Amount of measurements used by the windrose. The x should be the index of the windspeed sensor. Index meaning 0 for the first.                      |
-| date-first-match<br/>time-first-match<br/>date-last-matc<br/>time-last-match                  | Date and time of the first and last matched direction and speed measurements.<br/>These times should be close to the configured or selected period. |
-| match-count                                                                                   | Amount of matches between direction and speed measurements. These values are used in the calculations for the windrose.                             |
-| period-minutes                                                                                | Amount of minutes in the selected period.                                                                                                           |                                                                                                                |
-| period-hours                                                                                  | Amount of hours in the selected period.                                                                                                             | 
-| match-period-minutes                                                                          | Amount of minutes between the first and last matched measurements. This should be close to the configured or selected period.                       |                                                                                                                |
-| match-period-hours                                                                            | Amount of hours between the first and last matched measuremetns.                                                                                    | 
-| min-speed<br/>max-speed<br/>average-speed                                                     | Wind speed statistics. The first wind speed sensor is used. The first is also used for the windrose.                                                | 
-| calm-percentage                                                                               | Percentage of matched measurements in the first speed range. Usually this is the speed range with calm windspeeds.                                  |
-| median-speed                                                                                  | Median windspeed (50th percentile)                                                                                                                  |
-| q1-speed                                                                                      | Interquartile range (25th percentile)                                                                                                               |
-| q3-speed                                                                                      | Interquartile range (75th percentile)                                                                                                               |
-| iqr-range                                                                                     | Interquartile range (25th to 75th percentile) - excludes outliers                                                                                   |
-| p90-speed                                                                                     | 90th percentile for gusts (excludes the highest 10% outliers)                                                                                       |
-| wind-description                                                                              | Weather-style description using IQR                                                                                                                 |
+自訂陣列會取代該分類的預設陣列，不會自動合併。
 
-### Example text-blocks yaml
+## 響應式模式
 
-<img alt="Text block pevriew" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/example/text-block-example.png?raw=true" width="412"/>
+模式依卡片本身寬度（不是瀏覽器寬度）判定：
 
+| 模式 | 寬度 | 配置 |
+|---|---:|---|
+| `wide` | ≥ 760 px | 環境、風況、裝置三欄。 |
+| `compact` | 560–759 px | 主要內容兩欄，裝置區移至下方。 |
+| `narrow` | < 560 px | 單欄；風玫瑰與目前風況上下排列。 |
 
-```yaml
-text_blocks:
-  top:
-    text: |-
-       <table>
-           <tr>
-               <td>Direction measure’s:</td>
-               <td>${direction-count}</td>
-               <td>Minimal speed:</td>
-               <td>${min-speed}</td>
-           </tr>
-           <tr>
-               <td>Speed measure’s.:</td>
-               <td>${speed-1-count}</td>
-               <td>Maximum speed:</td>
-               <td>${max-speed}</td>
-           </tr>
-           <tr>
-               <td>Match count:</td>
-               <td>${match-count}</td>
-               <td>Average speed:</td>
-               <td>${average-speed}</td>
-           </tr>
-           <tr>
-               <td colspan="2">First direction time</td><td>${date-first-direction}, ${time-first-direction}</td>
-           </tr>
-           <tr>
-               <td colspan="2">First speed time</td><td>${date-first-speed-0}, ${time-first-speed-0}</td>
-           </tr>
-       </table>
+窄版在小於等於 390 px 時，環境與裝置子區塊也改為單欄。
+
+## 疑難排解
+
+- **卡片類型不存在**：確認資源 URL 指向 `uninus-weather-station-card.js`、類型是 module，並重新載入前端。
+- **更新後仍顯示舊版**：清除瀏覽器快取，或暫時在資源 URL 後加查詢字串（例如 `?v=dev`）。
+- **顯示必要實體錯誤**：檢查最小設定中的六類實體都有非空白 `entity`。
+- **顯示 `—`**：該實體不存在，或狀態為 `unknown`／`unavailable`。
+- **風玫瑰沒有歷史資料**：確認 Recorder 保留期間涵蓋查詢範圍；若啟用 statistics，確認實體確實產生對應統計資料。
+- **attribute 與 statistics 錯誤**：引擎不支援同一實體同時設定 `attribute` 與 `use_statistics: true`。
+- **期間設定衝突**：不要同時設定 `data_period` 與一個啟用中的 `period_selector`。
+- **自訂速度區間錯誤**：關閉 `speed_range_beaufort`，且不要混用固定步距、自訂區間與動態區間。
+
+## 開發
+
+```bash
+npm ci
+npm test
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-### Object actions
+`npm run build` 會同時產生：
 
-The hold, tap and double-tap actions described in the Home Assistant documentation are supported. See link:
-[Home Assistant action documentation](https://www.home-assistant.io/dashboards/actions/)
+- `./uninus-weather-station-card.js`（HACS 根目錄發佈檔）
+- `./build/uninus-weather-station-card.js`（本機建置輸出）
 
-See example yaml below on how to use.
-Btw, you can only configure actions for the first 2 speed bars.
+若要驗證上游相容的原始卡片建置：
 
-| Name         |  Type  | Default | Required | Description                          |
-|--------------|:------:|:-------:|:--------:|--------------------------------------|
-| top_left     | object |         |          | Configration for top left corner     |
-| top_right    | object |         |          | Configration for top right corner    |
-| bottom_left  | object |         |          | Configration for bottom left corner  |
-| bottom_right | object |         |          | Configration for bottom right corner |
-| windrose     | object |         |          | Configration for the windrose        |
-| speed_bar_1  | object |         |          | Configration for the first speedbar  |
-| speed_bar_2  | object |         |          | Configration for the second speedbar |
-
-
-Examples:
-- **top_right**: toggle light
-- **windrose**: navigate to an other page within Home Assitant.
-- **buttom_left**: open an url in an other browser tab.
-- **others**: show popup with more info about the entity.
-
-### Example actions yaml
-```yaml
-actions:
-  top_left:
-    tap_action:
-      entity: weather.home
-      action: more-info
-    hold_action:
-       entity: weather.holiday_home
-       action: more-info
-  top_right:
-    double_tap_action:
-      entity: switch.light
-      action: toggle
-  windrose:
-    tap_action:
-      action: navigate
-      navigation_path: /lovelace/floorplan
-  bottom_right:
-    tap_action:
-      entity: sensor.wind_direction
-      action: more-info
-  bottom_left:
-    tap_action:
-      action: url
-      url_path: https://www.home-assistant.io
-  speed_bar_1:
-    tap_action:
-      entity: sensor.wind_speed
-      action: more-info
-  speed_bar_2:
-    tap_action:
-      entity: sensor.wind_gust
-      action: more-info
+```bash
+npm run esbuild-windrose
 ```
 
+輸出為 `build/windrose-card.js`。
 
-### Object matching_strategy
+## 上游、授權與歸屬
 
-| Name                   |  Type   | Default | Required | Description                                                                                                                                                         |
-|------------------------|:-------:|:-------:|:--------:|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| name                   | string  |         |    -     | How to match direction and speed measurements. Find a speed with each direction or a direction with each speed measurement. More info below.                        |
-| time_interval          | number  |   60    |    -     | Time interval in seconds. Only used by the time-frame matching strategy. More info below.                                                                           |
-| log_measurement_counts | boolean |  false  |    -     | When set to true, will log measurement and match counts to the browsers console. Can be useful to check the data where the graph is based on. Example output below. |
+本專案衍生自 [aukedejong/lovelace-windrose-card](https://github.com/aukedejong/lovelace-windrose-card)，沿用其 Windrose 引擎程式。上游 README 與 `package.json` 宣告 MIT 授權；上游儲存庫未提供可直接複製的 LICENSE 檔，也未在這些來源中提供可確認的版權持有人名稱，因此本專案不臆測該名稱。
 
-The matching strategies can result in a different graph, depending on your sensors. How many state updates they get.
-
-#### Direction first
-
-Config value: 'direction-first'
-
-Every direction state during the configuration time frame is used for the graph. The algorithm searches for the last speed state at the time of the direction state measurment.
-It's possible not all speed state are used in the graph.
-
-#### Speed first
-
-Config value: 'speed-first'
-
-Every speed state during the configuration time frame is used for the graph. The algorithm searches for the last direction state at the time of the direction state measurement.
-It's possible not all direction states are used in the graph.
-
-It's probably best to choose the sensor that reports the most updates as first.
-
-#### Time frame
-
-Config value: 'time-frame'
-
-Extra config: 'time-interval'
-
-Time is leading. For every moment back in time (default every 60 seocnds) the direction and speed states are determined.
-For data sources that only update state changes, this should result in a better graph.
-
-For the first two strategies, a percentage in the graph is a percentage of the measurement count not a percentage of time.
-
-### Full time
-
-Config value: 'full-time'
-
-For every speed measurement the wind direction at that timestamp is determined.
-The same is done for every direction measurement.
-Then for every measurement combination the amount of seconds that combination was active is determined.
-With that data the wind rose percentages are calculated.
-
-I think this strategy results in the best graph, but it possibly takes to much CPU power to calculate on some devices.
-
-#### Example console output, when log_measurement_counts is set to true
-```
-Measurements:
-Directions: 1213 - 20/01/2025, 18:18:01 - 30/01/2025, 18:11:37
-Speed:      964 - 20/01/2025, 18:18:01 - 30/01/2025, 18:01:37
-Matches:    1213 - min: 0 - max: 67.3 - average: 24.972333 - strategy: direction-first
-```
-
-
-### Object colors
-For some values the theme variable --primary-text-color is used. This is needed if HA switches theme and light/dark mode.
-CSS color values are allowed.
-
-| Name                                          |  Type  |       Default        | Required | Description                                                                                     |
-|-----------------------------------------------|:------:|:--------------------:|:--------:|:------------------------------------------------------------------------------------------------|
-| rose_lines                                    | string |  rgb(160, 160, 160)  |          | Circles, borders and the cross color                                                            |
-| rose_direction_letters (DEPRECATED)           | string | --primary-text-color |          | Direction labels colors                                                                         |
-| rose_cardinal_direction_labels                | string | --primary-text-color |          | Cardinal direction labels color                                                                 |
-| rose_intercardinal_direction_labels           | string | --primary-text-color |          | Intercardinal direction labels color                                                            |
-| rose_secondary_intercardinal_direction_labels | string | --primary-text-color |          | Secondary intercardinal direction labels color                                                  |
-| rose_center_percentage                        | string |         auto         |          | Center circle text color. Auto means black or white depending on background color.              |
-| rose_center_background                        | string |         auto         |          | Center circle background. Auto means the same as the background color of the first bar segment. |
-| rose_percentages                              | string |         auto         |          | Percentage legend color. Auto means using browsers css mix-blend-mode option.                   |
-| rose_current_direction_arrow                  | string |         red          |          | Current direction arrow color                                                                   |
-| bar_border                                    | string |  rgb(160, 160, 160)  |          | Bar border color                                                                                |
-| bar_unit_name                                 | string | --primary-text-color |          | Unit name color                                                                                 |
-| bar_name                                      | string | --primary-text-color |          | Entity name color                                                                               |
-| bar_unit_values                               | string | --primary-text-color |          | Unit value color                                                                                |
-| bar_percentages                               | string |         auto         |          | Percentage color. Auto means black or white depending on background color.                      |
-_
-### Example colors yaml
-```yaml
-colors:
-  rose_lines: 'rgb(0,255,0)'
-  rose_cardinal_direction_labels: 'green'
-  rose_intercardinal_direction_labels: 'purple'
-  rose_secondary_intercardinal_direction_labels: 'yellow'
-  rose_center_percentage: 'red'
-  rose_percentages: 'blue'
-  rose_current_direction_arrow: 'purple'
-  bar_border: 'hsl(200, 100%, 60%)'
-  bar_unit_name: 'purple'
-  bar_name: 'yellow'
-  bar_unit_values: 'blue'
-  bar_percentages: 'orange'
-```
-
-## Examples using custom speed ranges
-
-### Custom fixed length speed ranges:
-
-Uses speed_range_step and speed_range_max.
-
-<img alt="Pevriew" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/example/speedbar_step_5_max_25.png?raw=true" width="415"/>
-
-```yaml
-type: custom:windrose-card
-title: Wind direction
-data_period:
-  period_back: -24h
-wind_direction_entity:
-  entity: sensor.wind_direction
-windspeed_entities:
-  - entity: sensor.wind_speed
-    name: Average
-    windspeed_bar_full: true
-    speed_range_beaufort: false
-    output_speed_unit: mps
-    speed_range_step: 5
-    speed_range_max: 25
-```
-
-### When you want full control
-
-Uses speed_ranges configuration, custom ranges and colors.
-
-Always make sure there is a speedrange starting from 0, otherwise you get this error:
-
-```Speed is not in a speedrange: 0.6 unit: mps```
-
-<img alt="Pevriew" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/example/speedbar_speed_ranges_custom.png?raw=true" width="412"/>
-
-```yaml
-type: custom:windrose-card
-title: Wind direction
-data_period:
-  period_back: -24h
-wind_direction_entity:
-  entity: sensor.wind_direction
-windspeed_entities:
-  - entity: sensor.wind_speed
-    name: Average
-    windspeed_bar_full: true
-    output_speed_unit: mps
-    speed_range_beaufort: false
-    speed_ranges:
-      - from_value: 0
-        color: rgb(0,255,0)
-      - from_value: 5
-        color: yellow
-      - from_value: 10
-        color: hsl(200, 100%, 60%)
-      - from_value: 20
-        color: orange
-      - from_value: 40
-        color: red
-```
-
-## Getting errors?
-Make sure you have `javascript_version: latest` in your `configuration.yaml` under `frontend:`.
-
-Make sure you have the latest versions of `windrose-card.js`.
-
-If you have issues after updating the card, try clearing your browser cache.
-
-If you have issues displaying the card in older browsers, try changing `type: module` to `type: js` at the card reference in `ui-lovelace.yaml`.
-
-## License
-This project is under the MIT license.
+本專案採用 [MIT License](./LICENSE)。衍生內容與來源說明見 [NOTICE](./NOTICE)。

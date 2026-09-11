@@ -1,494 +1,64 @@
-# Lovelace Windrose card 
-## Configuration examples
+# UNINUS Weather Station Card 範例
 
-## Minimal card
-<img alt="Example for config yaml" float="right" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/examples/minimal-right.png?raw=true" width="482"/>
+主要安裝方式、完整選項表與最小／完整 YAML 請見 [README](./README.md)。
+
+## 使用固定 24 小時期間
+
+若不需要期間按鈕，可明確停用按鈕並使用 `data_period`：
 
 ```yaml
-type: custom:windrose-card
-title: Minimal configuration
-windspeed_bar_location: right
+type: custom:uninus-weather-station-card
+wind_direction_entity:
+  entity: sensor.wind_direction
+windspeed_entities:
+  - entity: sensor.wind_speed
+weather_entities:
+  temperature:
+    entity: sensor.outdoor_temperature
+  humidity:
+    entity: sensor.outdoor_humidity
+  illuminance:
+    entity: sensor.outdoor_illuminance
+  rain:
+    entity: binary_sensor.rain
+buttons_config:
+  buttons: []
 data_period:
-  period_back: -200h
-wind_direction_entity:
-  entity: sensor.wind_direction_azimuth
-windspeed_entities:
-  - entity: sensor.wind_speed
-    name: Speed
-    windspeed_bar_full: false
-    speed_range_beaufort: false
-current_direction:
-  show_arrow: true
+  period_back: -24h
 ```
 
-## Wind period selectors and corner info
-<img alt="Peview bars bottom" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/examples/maximal-bottom-button.png?raw=true" width="482"/>
+## 使用長期統計
+
+只有在風向與風速實體確實提供 Home Assistant statistics 時才啟用：
 
 ```yaml
-type: custom:windrose-card
-title: Wind direction
-refresh_interval: 300
-windspeed_bar_location: bottom
+type: custom:uninus-weather-station-card
+wind_direction_entity:
+  entity: sensor.wind_direction
+  use_statistics: true
+  statistics_period: hour
+windspeed_entities:
+  - entity: sensor.wind_speed
+    use_statistics: true
+    statistics_period: hour
+    statistics_type: mean
+weather_entities:
+  temperature:
+    entity: sensor.outdoor_temperature
+  humidity:
+    entity: sensor.outdoor_humidity
+  illuminance:
+    entity: sensor.outdoor_illuminance
+  rain:
+    entity: binary_sensor.rain
 buttons_config:
-  location: top
   buttons:
     - type: period_selector
-      button_text: 1 Hour
-      period_back: -1h
-    - type: period_selector
-      button_text: 8 Hours
-      period_back: -8h
-    - type: period_selector
-      active: true
-      button_text: 1 Day
-      period_back: -1d
-    - type: period_selector
-      button_text: 10 Days
-      period_back: -10d
-wind_direction_entity:
-  entity: sensor.wind_direction_azimuth
-  use_statistics: false
-  direction_compensation: 0
-windspeed_entities:
-  - entity: sensor.wind_speed
-    name: Speed
-    speed_unit: auto
-    windspeed_bar_full: false
-    speed_range_beaufort: true
-    current_speed_arrow: true
-    use_statistics: false
-  - entity: sensor.wind_gust
-    name: Gust
-    speed_unit: auto
-    output_speed_unit: kph
-    speed_range_beaufort: false
-    windspeed_bar_full: true
-    current_speed_arrow: true
-    use_statistics: false
-matching_strategy:
-  name: direction-first
-rose_config:
-  windrose_draw_north_offset: 0
-  center_calm_percentage: true
-current_direction:
-  show_arrow: true
-compass_direction:
-  auto_rotate: true
-  entity: input_number.compass
-corner_info:
-  top_left:
-    label: Current Gust
-    unit: null
-    entity: sensor.wind_gust
-  top_right:
-    label: Direction
-    unit: °
-    color: red
-    entity: sensor.wind_direction_azimuth
-  bottom_left:
-    label: Compass
-    unit: °
-    entity: input_number.compass
-direction_labels:
-  cardinal_direction_letters: NESW
-  show_cardinal_directions: true
-  show_intercardinal_directions: true
-  show_secondary_intercardinal_directions: true
-  cardinal_directions_text_size: 60
-  intercardinal_directions_text_size: 45
-  secondary_intercardinal_directions_text_size: 30
-```
-
-## Text with stats and dates.
-<img alt="Peview bars bottom" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/examples/maximal-right-button-stats.png?raw=true" width="482"/>
-
-```yaml
-type: custom:windrose-card
-title: Wind Direction
-refresh_interval: 300
-windspeed_bar_location: right
-buttons_config:
-  location: bottom
-  buttons:
-    - type: period_selector
-      button_text: 1 Hour
-      period_back: -1h
-    - type: period_selector
-      button_text: 8 Hours
-      period_back: -8h
-    - type: period_selector
-      active: true
-      button_text: 1 Day
-      period_back: -1d
-    - type: period_selector
-      button_text: 10 Days
-      period_back: -10d
-wind_direction_entity:
-  entity: sensor.wind_direction_azimuth
-  use_statistics: false
-  direction_compensation: 0
-windspeed_entities:
-  - entity: sensor.wind_speed
-    name: Speed
-    speed_unit: auto
-    output_speed_unit: kph
-    windspeed_bar_full: false
-    speed_range_beaufort: true
-    current_speed_arrow: true
-    bar_render_scale: absolute
-    use_statistics: false
-    xspeed_ranges:
-      - from_value: 0
-        color: rgb(0,255,0)
-      - from_value: 5
-        color: blue
-      - from_value: 10
-        color: hsl(200, 100%, 60%)
-      - from_value: 20
-        color: orange
-      - from_value: 40
-        color: red
-  - entity: sensor.wind_gust
-    name: Gust
-    speed_unit: auto
-    output_speed_unit: kph
-    speed_range_beaufort: false
-    windspeed_bar_full: true
-    current_speed_arrow: true
-    use_statistics: false
-text_blocks:
-  top:
-    text: |-
-      <table>
-          <tr>
-              <td>Direction measure’s:</td>
-              <td>${direction-count}</td>
-              <td>Minimal speed:</td>
-              <td>${min-speed}</td>
-          </tr>
-          <tr>
-              <td>Speed measure’s.:</td>
-              <td>${speed-1-count}</td>
-              <td>Maximum speed:</td>
-              <td>${max-speed}</td>
-          </tr>
-          <tr>
-              <td>Match count:</td>
-              <td>${match-count}</td>
-              <td>Average speed:</td>
-              <td>${average-speed}</td>
-          </tr>
-          <tr>
-              <td>Period hours</td>
-              <td>${period-hours}</td>
-              <td>Calm percentage:</td>
-              <td>${calm-percentage}%</td>
-          </tr>
-          <tr>
-              <td>Temperature</td>
-              <td>${weather.home.temperature} °C</td>
-              <td>Wind speed</td>
-              <td>${sensor.wind_speed} Bft</td>
-          </tr>
-
-          <tr>
-              <td>First match time</td><td colspan="2">${date-first-match}, ${time-first-match}</td>
-          </tr>
-          <tr>
-              <td>Last match time</td><td colspan="2">${date-last-match}, ${time-last-match}</td>
-          </tr>
-      </table>
-    text_color: gray
-    text_size: 14
-current_direction:
-  show_arrow: true
-  hide_direction_below_speed: 2
-compass_direction:
-  auto_rotate: true
-  entity: input_number.compass
-corner_info:
-  top_left:
-    label: Current Gust
-    unit: null
-    entity: sensor.wind_gust
-  top_right:
-    label: Direction
-    unit: °
-    color: red
-    entity: sensor.wind_direction_azimuth
-  bottom_left:
-    label: Compass
-    unit: °
-    entity: input_number.compass
-matching_strategy:
-  name: full-time
-rose_config:
-  center_calm_percentage: true
-  cardinal_direction_letters: NOZW
-  circle_legend_text_size: 30
-  windrose_draw_north_offset: 0
-  background_image: /hacsfiles/lovelace-windrose-card/bg.png
-direction_labels:
-  cardinal_direction_letters: NEZW
-  show_cardinal_directions: true
-  show_intercardinal_directions: true
-  show_secondary_intercardinal_directions: true
-  cardinal_directions_text_size: 60
-  intercardinal_directions_text_size: 45
-  secondary_intercardinal_directions_text_size: 30
-```
-
-## Color options and custom direction labels
-<img alt="Peview bars bottom" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/examples/max-colors-bottom-compass.png?raw=true" width="482"/>
-
-```yaml
-type: custom:windrose-card
-refresh_interval: 300
-windspeed_bar_location: bottom
-data_period:
-  period_back: -200h
-wind_direction_entity:
-  entity: sensor.wind_direction_azimuth
-  use_statistics: false
-  direction_compensation: 0
-  direction_letters: NOZWX
-windspeed_entities:
-  - entity: sensor.wind_speed
-    name: Speed
-    speed_unit: auto
-    use_statistics: false
-    windspeed_bar_full: true
-    output_speed_unit: mps
-    speed_range_beaufort: true
-  - entity: sensor.wind_gust
-    name: Gust
-    speed_unit: auto
-    use_statistics: false
-    windspeed_bar_full: false
-    output_speed_unit: mps
-    speed_range_beaufort: false
-    speed_ranges:
-      - from_value: 0
-        color: rgb(0,255,0)
-      - from_value: 2
-        color: yellow
-      - from_value: 5
-        color: hsl(200, 100%, 60%)
-      - from_value: 10
-        color: orange
-      - from_value: 15
-        color: red
-rose_config:
-  windrose_draw_north_offset: 10
-  center_calm_percentage: true
-  background_image: /hacsfiles/lovelace-windrose-card/bg.png
-current_direction:
-  show_arrow: true
-  arrow_size: 50
-  center_circle_size: 30
-compass_direction:
-  auto_rotate: true
-  entity: input_number.compass
-corner_info:
-  top_left:
-    label: Gust (Bft)
-    unit: " Bft"
-    entity: sensor.wind_gust
-    label_text_size: 50
-    value_text_size: 50
-    precision: 3
-    input_unit: kph
-    output_unit: mps
-  top_right:
-    label: Gust (kph)
-    unit: " kph"
-    color: red
-    entity: sensor.wind_gust
-  bottom_left:
-    label: Compass
-    unit: °
-    entity: input_number.compass
-    label_text_size: 40
-  bottom_right:
-    label: Outside light
-    entity: light.keukenlamp
-    label_text_size: 40
-actions:
-  top_left:
-    tap_action:
-      entity: sensor.wind_gust
-      action: more-info
-  top_right:
-    double_tap_action:
-      entity: switch.hallamp
-      action: toggle
-  windrose:
-    tap_action:
-      action: navigate
-      navigation_path: /lovelace/plattegrond-tablet
-  bottom_right:
-    tap_action:
-      entity: sensor.plafondlamp_power_2
-      action: more-info
-  bottom_left:
-    tap_action:
-      action: url
-      url_path: https://www.home-assistant.io
-  speed_bar_1:
-    tap_action:
-      entity: sensor.kitchen_sensor_air_temperature
-      action: more-info
-  speed_bar_2:
-    tap_action:
-      entity: sensor.livingroom_sensor_air_temperature
-      action: more-info
-direction_labels:
-  cardinal_direction_letters: NESW
-  show_cardinal_directions: true
-  show_intercardinal_directions: true
-  show_secondary_intercardinal_directions: true
-  cardinal_directions_text_size: 60
-  intercardinal_directions_text_size: 45
-  secondary_intercardinal_directions_text_size: 30
-  custom_labels:
-    "n": A
-    e: B
-    s: C
-    w: D
-    ne: E
-    se: F
-    sw: G
-    nw: H
-    nne: I
-    ene: J
-    ese: K
-    sse: L
-    ssw: M
-    wsw: "N"
-    wnw: O
-    nnw: P
-matching_strategy:
-  name: full-time
-colors:
-  rose_lines: rgb(0,255,0)
-  rose_direction_letters: yellow
-  rose_center_percentage: red
-  rose_percentages: blue
-  rose_current_direction_arrow: purple
-  bar_border: hsl(200, 100%, 60%)
-  bar_unit_name: purple
-  bar_name: yellow
-  bar_unit_values: blue
-  bar_percentages: auto
-```
-
-## Period shift and play buttons.
-<img alt="Peview bars bottom" src="https://raw.githubusercontent.com/aukedejong/ha-windrose-card/main/examples/period_shift_play_buttons.png?raw=true" width="482"/>
-
-```yaml
-type: custom:windrose-card
-title: Time shift/play buttons
-refresh_interval: 300
-windspeed_bar_location: right
-disable_animations: false
-log_level: INFO
-buttons_config:
-  location: bottom
-  buttons:
-    - type: period_shift
-      button_text: "-12h"
-      shift_period: -12h
-      colors:
-        active_color: red
-        active_bg_color: inherit
-        active_border_color: red
-        color: green
-        bg_color: inherit
-    - type: period_shift
-      button_text: +12h
-      shift_period: +12h
-      colors:
-        active_color: red
-        active_bg_color: inherit
-        color: green
-        bg_color: inherit
-    - type: period_shift_play
-      period_back: "-10w"
-      button_text: Play
-      step_period: +3h
-      window_period: +10d
-      delay: 50
+      button_text: 7D
+      preset_period: last_7_days
       use_statistics: true
       statistics_period: hour
-    - type: period_selector
       active: true
-      button_text: 7 Days
-      preset_period: last_30_days
-    - type: period_selector
-      active: false
-      button_text: This month
-      preset_period: this_month
-      use_statistics: true
-      statistics_period: 5minute
-wind_direction_entity:
-  entity: sensor.gorredijk_wind_direction_azimuth
-  use_statistics: false
-  statistics_period: hour
-  direction_compensation: 0
-  direction_letters: NOZWX
-windspeed_entities:
-  - entity: sensor.gorredijk_wind_speed
-    name: Speed
-    speed_unit: auto
-    use_statistics: false
-    statistics_period: hour
-    windspeed_bar_full: false
-    bar_render_scale: percentage_relative
-    output_speed_unit: kph
-    current_speed_arrow: true
-    speed_range_beaufort: true
-current_direction:
-  show_arrow: true
-  arrow_size: 50
-  center_circle_size: 30
-  hide_direction_below_speed: 3
-direction_labels:
-  cardinal_direction_letters: NESW
-  show_cardinal_directions: true
-  show_intercardinal_directions: true
-matching_strategy:
-  name: full-time
-rose_config:
-  center_calm_percentage: true
-text_blocks:
-  top:
-    text: |-
-      <table>
-          <tr>
-              <td>Direction measure’s:</td>
-              <td>${direction-count}</td>
-              <td>Match count:</td>
-              <td>${match-count}</td>
-          </tr>
-          <tr>
-              <td>Speed measure’s.:</td>
-              <td>${speed-0-count}</td>
-              <td>Period hours</td>
-              <td>${period-hours}</td>
-          </tr>
-          <tr>
-              <td>First match time</td><td colspan="2">${date-first-match}, ${time-first-match}</td>
-          </tr>
-          <tr>
-              <td>Last match time</td><td colspan="2">${date-last-match} - ${time-last-match}</td>
-          </tr>
-          <tr>
-              <td>Period start</td><td colspan="2">${start-date} - ${start-time}</td>
-          </tr>
-          <tr>
-              <td>Period end</td><td colspan="2">${end-date} - ${end-time}</td>
-          </tr>
-      </table>
-    text_color: gray
-    text_size: 14
 ```
+
+`example/` 與 `examples/` 內既有圖片來自上游 Windrose Card，只用於底層玫瑰圖功能參考，並非 UNINUS 卡片完整外觀。
