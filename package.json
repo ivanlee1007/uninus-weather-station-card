@@ -1,7 +1,7 @@
 {
-  "name": "ha-windrose-card-project",
+  "name": "uninus-weather-station-card",
   "version": "0.0.1",
-  "description": "",
+  "description": "UNINUS weather station card for Home Assistant",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit",
     "esbuild": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js",
     "esbuild-watch": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --runInBand"
   },
   "keywords": [
     "home-assistant",
@@ -28,6 +28,7 @@
     "@babel/core": "^7.26.0",
     "@babel/preset-env": "^7.26.0",
     "@babel/preset-typescript": "^7.26.0",
+    "@eslint/js": "^9.39.4",
     "@jest/globals": "^29.7.0",
     "@typescript-eslint/eslint-plugin": "^8.56.0",
     "@typescript-eslint/parser": "^8.56.0",

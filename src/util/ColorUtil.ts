@@ -48,7 +48,7 @@ export class ColorUtil {
         let rgbString = window.getComputedStyle(div).color;
         document.body.removeChild(div);
         if (rgbString) {
-            // @ts-ignore
+            // @ts-expect-error rgbString is guaranteed to contain numeric channels here.
             return rgbString.match(/\d+/g).map(Number);
         }
         return undefined;
