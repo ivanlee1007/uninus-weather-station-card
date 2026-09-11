@@ -21,6 +21,7 @@ import {
     classifyResponsiveMode,
     createMoreInfoEvent,
     formatEntityState,
+    groupButtonsForLocation,
     normalizeWeatherStationConfig,
     type EntityDisplay,
     type NormalizedWeatherStationConfig,
@@ -108,13 +109,13 @@ export class UninusWeatherStationCard extends LitElement {
     }
 
     public getCardSize(): number {
-        return this.responsiveMode === "narrow" ? 14 : 9;
+        return this.responsiveMode === "narrow" || this.responsiveMode === "small" ? 14 : 9;
     }
 
     public getLayoutOptions(): Record<string, number> {
         return {
             grid_columns: this.cardConfig?.cardWidth ?? 4,
-            grid_rows: this.responsiveMode === "narrow" ? 14 : 9,
+            grid_rows: this.responsiveMode === "narrow" || this.responsiveMode === "small" ? 14 : 9,
             min_grid_columns: 2,
         };
     }
@@ -192,9 +193,10 @@ export class UninusWeatherStationCard extends LitElement {
                     <section class="panel wind-panel">
                         <div class="wind-header">
                             <strong>風速／風向圖</strong>
-                            ${this.renderButtons()}
+                            ${this.renderButtons("top")}
                         </div>
                         <div id="text-block-top" class="engine-text"></div>
+                        ${this.renderButtons("top-below-text")}
                         <div class="wind-content">
                             <div id="svg-container" aria-label="歷史風向玫瑰圖"></div>
                             <div class="wind-current">
@@ -205,7 +207,9 @@ export class UninusWeatherStationCard extends LitElement {
                                 </div>
                             </div>
                         </div>
+                        ${this.renderButtons("bottom-above-text")}
                         <div id="text-block-bottom" class="engine-text"></div>
+                        ${this.renderButtons("bottom")}
                         ${this.errorMessage ? html`<div class="error" role="alert">${this.errorMessage}</div>` : ""}
                     </section>
 
@@ -243,19 +247,26 @@ export class UninusWeatherStationCard extends LitElement {
         </button>`;
     }
 
-    private renderButtons(): TemplateResult {
-        const buttons = this.cardConfig?.buttonsConfig?.buttons;
-        if (!buttons?.length) {
+    private renderButtons(location: string): TemplateResult {
+        const buttonsConfig = this.cardConfig?.buttonsConfig;
+        const rows = groupButtonsForLocation(
+            buttonsConfig?.location ?? "",
+            location,
+            buttonsConfig?.buttons ?? [],
+        );
+        if (!rows.length) {
             return html``;
         }
-        return html`<div class="periods">
-            ${buttons.map(button => html`
-                <button class=${button.baseConfig.active ? "active" : ""}
-                    style=${button.baseConfig.buttonColors.getCss(button.baseConfig.active)}
-                    @click=${this.handleButtonClickFunc(button)}>
-                    ${button.baseConfig.buttonText}
-                </button>
-            `)}
+        return html`<div class="periods ${location}">
+            ${rows.map(row => html`<div class="period-row">
+                ${row.map(button => html`
+                    <button class=${button.baseConfig.active ? "active" : ""}
+                        style=${button.baseConfig.buttonColors.getCss(button.baseConfig.active)}
+                        @click=${this.handleButtonClickFunc(button)}>
+                        ${button.baseConfig.buttonText}
+                    </button>
+                `)}
+            </div>`)}
         </div>`;
     }
 
@@ -477,7 +488,9 @@ export class UninusWeatherStationCard extends LitElement {
             .sensor-value strong { font-size: 24px; color: #d98b2b; }
             .wind-panel { padding: 0; overflow: hidden; }
             .wind-header { min-height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--uninus-line); }
-            .periods { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+            .periods { margin: 8px 12px; display: grid; gap: 4px; }
+            .wind-header .periods { margin: 0 0 0 auto; }
+            .period-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
             .periods button { border: 1px solid var(--uninus-line); border-radius: 8px; padding: 4px 7px; color: var(--uninus-muted); background: transparent; cursor: pointer; font-size: 10px; }
             .periods button.active { color: var(--text-primary-color, #fff); background: var(--uninus-green); border-color: var(--uninus-green); }
             .wind-content { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(95px, .34fr); min-height: 300px; }
@@ -497,21 +510,20 @@ export class UninusWeatherStationCard extends LitElement {
             footer { min-height: 34px; padding: 8px 18px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--uninus-line); }
             ha-card.compact main { grid-template-columns: minmax(150px, .7fr) minmax(320px, 1.5fr); }
             ha-card.compact .device-column { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
-            ha-card.narrow header { align-items: flex-start; flex-wrap: wrap; }
-            ha-card.narrow .status { width: 100%; margin-left: 50px; justify-content: flex-start; }
-            ha-card.narrow main { grid-template-columns: 1fr; }
-            ha-card.narrow .environment-column { grid-template-columns: 1fr 1fr; }
-            ha-card.narrow .wind-panel { grid-row: 2; }
-            ha-card.narrow .device-column { grid-template-columns: 1fr 1fr; }
-            ha-card.narrow .wind-header { align-items: flex-start; flex-direction: column; }
-            ha-card.narrow .periods { margin-left: 0; justify-content: flex-start; }
-            ha-card.narrow .wind-content { grid-template-columns: 1fr; }
-            ha-card.narrow .wind-current { grid-template-columns: 1fr 1fr; border-left: 0; border-top: 1px solid var(--uninus-line); }
-            ha-card.narrow #svg-container { min-height: 330px; }
-            @media (max-width: 390px) {
-                ha-card.narrow .environment-column, ha-card.narrow .device-column { grid-template-columns: 1fr; }
-                footer { align-items: flex-start; flex-direction: column; gap: 3px; }
-            }
+            ha-card:is(.narrow, .small) header { align-items: flex-start; flex-wrap: wrap; }
+            ha-card:is(.narrow, .small) .status { width: 100%; margin-left: 50px; justify-content: flex-start; }
+            ha-card:is(.narrow, .small) main { grid-template-columns: 1fr; }
+            ha-card:is(.narrow, .small) .environment-column { grid-template-columns: 1fr 1fr; }
+            ha-card:is(.narrow, .small) .wind-panel { grid-row: 2; }
+            ha-card:is(.narrow, .small) .device-column { grid-template-columns: 1fr 1fr; }
+            ha-card:is(.narrow, .small) .wind-header { align-items: flex-start; flex-direction: column; }
+            ha-card:is(.narrow, .small) .wind-header .periods { margin-left: 0; }
+            ha-card:is(.narrow, .small) .period-row { justify-content: flex-start; }
+            ha-card:is(.narrow, .small) .wind-content { grid-template-columns: 1fr; }
+            ha-card:is(.narrow, .small) .wind-current { grid-template-columns: 1fr 1fr; border-left: 0; border-top: 1px solid var(--uninus-line); }
+            ha-card:is(.narrow, .small) #svg-container { min-height: 330px; }
+            ha-card.small .environment-column, ha-card.small .device-column { grid-template-columns: 1fr; }
+            ha-card.small footer { align-items: flex-start; flex-direction: column; gap: 3px; }
         `;
     }
 }

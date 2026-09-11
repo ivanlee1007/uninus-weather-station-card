@@ -48,13 +48,27 @@ export const classifyRainState = (
     return "unknown";
 };
 
-export type ResponsiveMode = "wide" | "compact" | "narrow";
+export type ResponsiveMode = "wide" | "compact" | "narrow" | "small";
+
+export const groupButtonsForLocation = <T extends { baseConfig: { newRow: boolean } }>(
+    configuredLocation: string,
+    requestedLocation: string,
+    buttons: T[],
+): T[][] => {
+    if (configuredLocation !== requestedLocation) return [];
+    return buttons.reduce<T[][]>((rows, button) => {
+        if (rows.length === 0 || button.baseConfig.newRow) rows.push([]);
+        rows[rows.length - 1].push(button);
+        return rows;
+    }, []);
+};
 
 export const classifyResponsiveMode = (width: number, _height: number): ResponsiveMode => {
     if (width >= 760) {
         return "wide";
     }
-    return width >= 560 ? "compact" : "narrow";
+    if (width >= 560) return "compact";
+    return width > 390 ? "narrow" : "small";
 };
 
 export const createMoreInfoEvent = (
@@ -121,10 +135,10 @@ export const buildWindRoseConfig = (
     title: "",
     hide_windspeed_bar: config.hide_windspeed_bar ?? true,
     current_direction: config.current_direction ?? { show_arrow: true },
-    buttons_config: config.buttons_config ?? {
+    buttons_config: config.buttons_config ?? (config.data_period ? undefined : {
         location: "top",
         buttons: defaultPeriodButtons.map(button => ({ ...button })),
-    },
+    }),
 });
 
 const requireEntity = (path: string, value: unknown): void => {

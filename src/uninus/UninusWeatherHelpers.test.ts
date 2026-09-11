@@ -5,6 +5,7 @@ import {
     buildWindRoseConfig,
     createMoreInfoEvent,
     formatEntityState,
+    groupButtonsForLocation,
     normalizeWeatherStationConfig,
     type HassStateLike,
     type UninusWeatherStationCardConfig,
@@ -152,16 +153,37 @@ describe("createMoreInfoEvent", () => {
 });
 
 describe("classifyResponsiveMode", () => {
-    it.each<[number, number, "wide" | "compact" | "narrow"]>([
+    it.each<[number, number, "wide" | "compact" | "narrow" | "small"]>([
         [980, 600, "wide"],
         [760, 900, "wide"],
         [759, 500, "compact"],
         [560, 900, "compact"],
         [559, 900, "narrow"],
-        [320, 480, "narrow"],
+        [391, 480, "narrow"],
+        [390, 900, "small"],
+        [320, 480, "small"],
     ])("classifies a %sx%s card as %s", (width, height, expected) => {
         expect(classifyResponsiveMode(width, height)).toBe(expected);
     });
+});
+
+describe("groupButtonsForLocation", () => {
+    const buttons = [
+        { name: "previous", baseConfig: { newRow: false } },
+        { name: "one-hour", baseConfig: { newRow: true } },
+        { name: "eight-hours", baseConfig: { newRow: false } },
+        { name: "next", baseConfig: { newRow: true } },
+    ];
+
+    it.each(["top", "top-below-text", "bottom-above-text", "bottom"])(
+        "returns button rows only at the configured %s slot",
+        location => {
+            expect(groupButtonsForLocation(location, location, buttons).map(row => row.map(button => button.name)))
+                .toEqual([["previous"], ["one-hour", "eight-hours"], ["next"]]);
+            const otherLocation = location === "top" ? "bottom" : "top";
+            expect(groupButtonsForLocation(location, otherLocation, buttons)).toEqual([]);
+        },
+    );
 });
 
 describe("buildWindRoseConfig", () => {
@@ -183,5 +205,14 @@ describe("buildWindRoseConfig", () => {
             buttons_config: { location: "bottom", buttons: [{ type: "period_selector", button_text: "Today" }] },
         });
         expect((buildWindRoseConfig(config).buttons_config as { buttons: unknown[] }).buttons).toHaveLength(1);
+    });
+
+    it("supports a fixed data period with buttons disabled by omitting buttons_config", () => {
+        const config = normalizeWeatherStationConfig({
+            ...validConfig(),
+            data_period: { period_back: "-24h" },
+        });
+
+        expect(buildWindRoseConfig(config).buttons_config).toBeUndefined();
     });
 });

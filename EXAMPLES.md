@@ -4,7 +4,7 @@
 
 ## 使用固定 24 小時期間
 
-若不需要期間按鈕，可明確停用按鈕並使用 `data_period`：
+若不需要期間按鈕，請省略 `buttons_config` 並使用 `data_period`：
 
 ```yaml
 type: custom:uninus-weather-station-card
@@ -21,8 +21,6 @@ weather_entities:
     entity: sensor.outdoor_illuminance
   rain:
     entity: binary_sensor.rain
-buttons_config:
-  buttons: []
 data_period:
   period_back: -24h
 ```
