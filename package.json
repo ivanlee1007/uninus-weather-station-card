@@ -8,8 +8,11 @@
     "http-server": "http-server ./",
     "lint": "npx eslint .",
     "typecheck": "tsc --noEmit",
-    "esbuild": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js",
+    "esbuild": "npm run esbuild-windrose && npm run esbuild-uninus",
+    "esbuild-windrose": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js",
+    "esbuild-uninus": "esbuild src/uninus/UninusWeatherStationCard.ts --bundle --minify --target=es2017 --outfile=build/uninus-weather-station-card.js",
     "esbuild-watch": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js --watch",
+    "esbuild-uninus-watch": "esbuild src/uninus/UninusWeatherStationCard.ts --bundle --minify --target=es2017 --outfile=build/uninus-weather-station-card.js --watch",
     "test": "jest --runInBand"
   },
   "keywords": [
