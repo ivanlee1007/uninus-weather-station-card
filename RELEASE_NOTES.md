@@ -1,5 +1,12 @@
 # UNINUS Weather Station Card — Development Notes
 
+## v0.1.1
+
+- 修正正式 Release tag，使其指向已合併的 `main` 成果。
+- 新增 HACS 可辨識的實機預覽圖。
+- 新增 Home Assistant 2026.9.1 實機驗證紀錄與寬／窄版截圖。
+- 保留可操作的測試 Dashboard View 與 8 個測試 Helpers。
+
 ## v0.1.0
 
 - 新增 UNINUS Weather Station Card 自訂元素與繁體中文氣象站介面。
