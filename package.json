@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run esbuild-uninus",
     "esbuild": "npm run esbuild-windrose && npm run esbuild-uninus",
-    "esbuild-windrose": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js",
-    "esbuild-uninus": "esbuild src/uninus/UninusWeatherStationCard.ts --bundle --minify --target=es2017 --outfile=build/uninus-weather-station-card.js && node -e \"require('node:fs').copyFileSync('build/uninus-weather-station-card.js', 'uninus-weather-station-card.js')\"",
+    "esbuild-windrose": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js && node scripts/normalize-build-output.cjs build/windrose-card.js",
+    "esbuild-uninus": "esbuild src/uninus/UninusWeatherStationCard.ts --bundle --minify --target=es2017 --outfile=build/uninus-weather-station-card.js && node scripts/normalize-build-output.cjs build/uninus-weather-station-card.js && node -e \"require('node:fs').copyFileSync('build/uninus-weather-station-card.js', 'uninus-weather-station-card.js')\"",
     "esbuild-watch": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js --watch",
     "esbuild-uninus-watch": "esbuild src/uninus/UninusWeatherStationCard.ts --bundle --minify --target=es2017 --outfile=build/uninus-weather-station-card.js --watch",
     "test": "jest --runInBand"

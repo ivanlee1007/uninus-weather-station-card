@@ -162,10 +162,11 @@ export class CardConfigWrapper {
     }
 
     private checkRefreshInterval(): number {
-        if (this.cardConfig.refresh_interval && isNaN(this.cardConfig.refresh_interval)) {
+        if (this.cardConfig.refresh_interval !== undefined &&
+            (!Number.isFinite(Number(this.cardConfig.refresh_interval)) || Number(this.cardConfig.refresh_interval) <= 0)) {
             throw new Error('WindRoseCard: Invalid refresh_interval, should be a number in seconds.');
-        } else if (this.cardConfig.refresh_interval) {
-            return this.cardConfig.refresh_interval;
+        } else if (this.cardConfig.refresh_interval !== undefined) {
+            return Number(this.cardConfig.refresh_interval);
         }
         return GlobalConfig.defaultRefreshInterval;
     }

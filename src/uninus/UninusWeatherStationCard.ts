@@ -80,8 +80,12 @@ export class UninusWeatherStationCard extends LitElement {
     private responsiveMode: ResponsiveMode = "wide";
     private initialized = false;
     private errorMessage = "";
+    private requestGeneration = 0;
+    private playbackTimeout?: number;
+    private playbackButton?: PeriodShiftPlayButton;
 
     public setConfig(config: UninusWeatherStationCardConfig): void {
+        this.cancelPendingWork();
         this.config = normalizeWeatherStationConfig(config);
         this.cardConfig = new CardConfigWrapper(buildWindRoseConfig(this.config) as never);
         this.initialized = false;
@@ -134,6 +138,7 @@ export class UninusWeatherStationCard extends LitElement {
     }
 
     public disconnectedCallback(): void {
+        this.cancelPendingWork();
         this.stopInterval();
         this.resizeObserver?.disconnect();
         this.resizeObserver = undefined;
@@ -303,6 +308,8 @@ export class UninusWeatherStationCard extends LitElement {
                 if (button.baseConfig.active) {
                     button.baseConfig.active = false;
                     button.paused = true;
+                    this.stopPlayback(false);
+                    this.requestGeneration++;
                     this.requestUpdate();
                     return;
                 }
@@ -363,15 +370,19 @@ export class UninusWeatherStationCard extends LitElement {
 
     private refreshMeasurements(animate: boolean): void {
         if (!this.initialized) return;
+        this.stopPlayback();
+        const requestGeneration = ++this.requestGeneration;
         this.errorMessage = "";
-        this.windRoseDirigent.refreshData()
+        this.windRoseDirigent.refreshData(() => requestGeneration === this.requestGeneration)
             .then((holder: MeasurementHolder) => {
+                if (requestGeneration !== this.requestGeneration) return;
                 this.windRoseDirigent.renderGraphs(animate);
                 this.windRoseDirigent.updateStateRender();
                 this.errorMessage = holder?.error?.message ?? "";
                 this.requestUpdate();
             })
             .catch(error => {
+                if (requestGeneration !== this.requestGeneration) return;
                 this.errorMessage = error instanceof Error ? error.message : String(error ?? "無法載入風況歷史");
                 this.requestUpdate();
             });
@@ -379,15 +390,21 @@ export class UninusWeatherStationCard extends LitElement {
 
     private refreshMeasurementsPlay(button: PeriodShiftPlayButton): void {
         if (!this.initialized || !this.cardConfig) return;
-        this.windRoseDirigent.refreshData().then((holder: MeasurementHolder) => {
+        this.stopPlayback(false);
+        this.playbackButton = button;
+        const requestGeneration = ++this.requestGeneration;
+        const cardConfig = this.cardConfig;
+        this.windRoseDirigent.refreshData(() => requestGeneration === this.requestGeneration).then((holder: MeasurementHolder) => {
+            if (requestGeneration !== this.requestGeneration || cardConfig !== this.cardConfig) return;
             this.windRoseDirigent.renderGraphs(false);
             this.windRoseDirigent.updateStateRender();
             this.errorMessage = holder?.error?.message ?? "";
             this.requestUpdate();
-            window.setTimeout(() => {
-                if (!this.cardConfig) return;
-                const moved = this.cardConfig.activePeriod.movePeriod(button.stepPeriod);
-                if (button.baseConfig.active && moved && this.cardConfig.activePeriod.endTime <= button.period.endTime) {
+            this.playbackTimeout = window.setTimeout(() => {
+                this.playbackTimeout = undefined;
+                if (requestGeneration !== this.requestGeneration || cardConfig !== this.cardConfig) return;
+                const moved = cardConfig.activePeriod.movePeriod(button.stepPeriod);
+                if (button.baseConfig.active && moved && cardConfig.activePeriod.endTime <= button.period.endTime) {
                     this.refreshMeasurementsPlay(button);
                 } else if (button.baseConfig.active) {
                     button.paused = false;
@@ -396,10 +413,28 @@ export class UninusWeatherStationCard extends LitElement {
                 }
             }, button.delay);
         }).catch(error => {
+            if (requestGeneration !== this.requestGeneration) return;
             button.baseConfig.active = false;
             this.errorMessage = error instanceof Error ? error.message : String(error ?? "無法載入風況歷史");
             this.requestUpdate();
         });
+    }
+
+    private stopPlayback(deactivate = true): void {
+        if (this.playbackTimeout !== undefined) {
+            clearTimeout(this.playbackTimeout);
+            this.playbackTimeout = undefined;
+        }
+        if (deactivate && this.playbackButton) {
+            this.playbackButton.baseConfig.active = false;
+            this.playbackButton.paused = false;
+            this.playbackButton = undefined;
+        }
+    }
+
+    private cancelPendingWork(): void {
+        this.requestGeneration++;
+        this.stopPlayback();
     }
 
     private startInterval(): void {
