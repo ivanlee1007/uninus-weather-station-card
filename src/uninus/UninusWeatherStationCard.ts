@@ -310,6 +310,7 @@ export class UninusWeatherStationCard extends LitElement {
                     button.paused = true;
                     this.stopPlayback(false);
                     this.requestGeneration++;
+                    this.windRoseDirigent.cancelPendingRender();
                     this.requestUpdate();
                     return;
                 }
@@ -371,6 +372,7 @@ export class UninusWeatherStationCard extends LitElement {
     private refreshMeasurements(animate: boolean): void {
         if (!this.initialized) return;
         this.stopPlayback();
+        this.windRoseDirigent.cancelPendingRender();
         const requestGeneration = ++this.requestGeneration;
         this.errorMessage = "";
         this.windRoseDirigent.refreshData(() => requestGeneration === this.requestGeneration)
@@ -391,6 +393,7 @@ export class UninusWeatherStationCard extends LitElement {
     private refreshMeasurementsPlay(button: PeriodShiftPlayButton): void {
         if (!this.initialized || !this.cardConfig) return;
         this.stopPlayback(false);
+        this.windRoseDirigent.cancelPendingRender();
         this.playbackButton = button;
         const requestGeneration = ++this.requestGeneration;
         const cardConfig = this.cardConfig;
@@ -435,6 +438,7 @@ export class UninusWeatherStationCard extends LitElement {
     private cancelPendingWork(): void {
         this.requestGeneration++;
         this.stopPlayback();
+        this.windRoseDirigent.cancelPendingRender();
     }
 
     private startInterval(): void {

@@ -1,7 +1,11 @@
-import { describe, expect, it, jest } from "@jest/globals";
+import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { WindRoseDirigent } from "./WindRoseDirigent";
 
 describe("WindRoseDirigent initialization", () => {
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
     it("clears all entity and render arrays before rebuilding", () => {
         const dirigent = Object.create(WindRoseDirigent.prototype) as any;
         Object.assign(dirigent, {
@@ -39,5 +43,40 @@ describe("WindRoseDirigent initialization", () => {
 
         await expect(dirigent.refreshData(() => false)).rejects.toThrow("Stale measurement request");
         expect(matcher.match).not.toHaveBeenCalled();
+    });
+
+    it("does not run an older scheduled render after it is cancelled", () => {
+        jest.useFakeTimers();
+        const windRoseRenderer = {
+            animateRemoveGraphs: jest.fn(), removeGraphs: jest.fn(), drawWindRose: jest.fn(),
+        };
+        const dirigent = Object.create(WindRoseDirigent.prototype) as any;
+        Object.assign(dirigent, {
+            initReady: true,
+            measurementsReady: true,
+            renderGeneration: 0,
+            log: { method: jest.fn(), debug: jest.fn() },
+            cardConfig: {
+                windspeedEntities: [{ useForWindRose: true }],
+                roseConfig: { backgroundImage: undefined },
+            },
+            windRoseRenderer,
+            windBarRenderers: [],
+            currentSpeedRenderers: [],
+            windRoseData: [{ source: "old" }],
+            speedRangeServices: [{}],
+            entityStatesProcessor: {},
+            degreesCalculator: {},
+            touchFacesRenderer: { moveToFront: jest.fn() },
+            htmlRenderer: { renderTextBlocks: jest.fn() },
+        });
+
+        dirigent.renderGraphs(true);
+        dirigent.windRoseData = [{ source: "new" }];
+        dirigent.cancelPendingRender();
+        jest.runOnlyPendingTimers();
+
+        expect(windRoseRenderer.removeGraphs).not.toHaveBeenCalled();
+        expect(windRoseRenderer.drawWindRose).not.toHaveBeenCalled();
     });
 });

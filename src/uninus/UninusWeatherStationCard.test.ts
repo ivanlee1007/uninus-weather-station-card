@@ -39,10 +39,11 @@ describe("UninusWeatherStationCard request lifecycle", () => {
         const refreshData = jest.fn()
             .mockReturnValueOnce(first.promise)
             .mockReturnValueOnce(second.promise);
+        const cancelPendingRender = jest.fn();
         const card = Object.create(UninusWeatherStationCard.prototype) as any;
         Object.assign(card, {
             initialized: true,
-            windRoseDirigent: { refreshData, renderGraphs: jest.fn(), updateStateRender: jest.fn() },
+            windRoseDirigent: { refreshData, renderGraphs: jest.fn(), updateStateRender: jest.fn(), cancelPendingRender },
             requestUpdate: jest.fn(),
             errorMessage: "",
             requestGeneration: 0,
@@ -56,6 +57,7 @@ describe("UninusWeatherStationCard request lifecycle", () => {
         await Promise.resolve();
 
         expect(card.windRoseDirigent.renderGraphs).toHaveBeenCalledTimes(1);
+        expect(cancelPendingRender).toHaveBeenCalledTimes(2);
         expect(refreshData.mock.calls[0][0]).toEqual(expect.any(Function));
     });
 
@@ -72,7 +74,8 @@ describe("UninusWeatherStationCard request lifecycle", () => {
             initialized: true,
             cardConfig: { activePeriod: oldPeriod },
             windRoseDirigent: {
-                refreshData: jest.fn<() => Promise<any>>().mockResolvedValue({}), renderGraphs: jest.fn(), updateStateRender: jest.fn(),
+                refreshData: jest.fn<() => Promise<any>>().mockResolvedValue({}), renderGraphs: jest.fn(),
+                updateStateRender: jest.fn(), cancelPendingRender: jest.fn(),
             },
             requestUpdate: jest.fn(),
             stopInterval: jest.fn(),
@@ -90,5 +93,6 @@ describe("UninusWeatherStationCard request lifecycle", () => {
 
         expect(oldPeriod.movePeriod).not.toHaveBeenCalled();
         expect(button.baseConfig.active).toBe(false);
+        expect(card.windRoseDirigent.cancelPendingRender).toHaveBeenCalledTimes(2);
     });
 });

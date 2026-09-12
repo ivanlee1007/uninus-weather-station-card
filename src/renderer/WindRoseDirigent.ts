@@ -74,6 +74,7 @@ export class WindRoseDirigent {
     private initReady = false;
     private measurementsReady = false;
     private renderGeneration = 0;
+    private pendingRenderTimeout?: ReturnType<typeof setTimeout>;
 
     constructor(svg: Svg, sendEvent: (event: CustomEvent) => void) {
         this.svg = svg;
@@ -154,7 +155,7 @@ export class WindRoseDirigent {
     }
 
     private resetForInit(): void {
-        this.renderGeneration++;
+        this.cancelPendingRender();
         this.measurementCounters = [];
         this.outputSpeedUnits = [];
         this.speedRangeServices = [];
@@ -216,7 +217,8 @@ export class WindRoseDirigent {
     }
 
     renderGraphs(animate: boolean): void {
-        const renderGeneration = ++this.renderGeneration;
+        this.cancelPendingRender();
+        const renderGeneration = this.renderGeneration;
         const activeSpeedEntityIndex = this.getActiveSpeedEntity();
         if (!this.initReady || !this.measurementsReady) {
             this.log.method("renderGraphs', 'Not ready yet " + this.initReady + " - "  + this.measurementsReady);
@@ -229,8 +231,9 @@ export class WindRoseDirigent {
                 this.windBarRenderers[i].animateRemoveGraph();
             }
         }
-        setTimeout(() => {
+        this.pendingRenderTimeout = setTimeout(() => {
             if (renderGeneration !== this.renderGeneration) return;
+            this.pendingRenderTimeout = undefined;
             this.windRoseRenderer.removeGraphs();
             this.log.debug('renderGraphs()', this.svg, this.windRoseData, this.windBarRenderers);
             this.windRoseRenderer.drawWindRose(this.windRoseData[activeSpeedEntityIndex], this.speedRangeServices[activeSpeedEntityIndex], animate);
@@ -254,6 +257,14 @@ export class WindRoseDirigent {
             this.windBarRenderers.forEach(windBarrenderer => windBarrenderer.moveEventSegmentsToFront());
             this.htmlRenderer.renderTextBlocks();
         }, animate ? 300 : 0);
+    }
+
+    cancelPendingRender(): void {
+        this.renderGeneration++;
+        if (this.pendingRenderTimeout !== undefined) {
+            clearTimeout(this.pendingRenderTimeout);
+            this.pendingRenderTimeout = undefined;
+        }
     }
 
     updateStateRender(): void {
