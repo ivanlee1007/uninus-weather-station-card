@@ -83,6 +83,9 @@ export class UninusWeatherStationCard extends LitElement {
     private requestGeneration = 0;
     private playbackTimeout?: number;
     private playbackButton?: PeriodShiftPlayButton;
+    private periodShiftHighlightTimeout?: number;
+    private periodShiftHighlightButton?: PeriodShiftButton;
+    private refreshOnReconnect = false;
 
     public setConfig(config: UninusWeatherStationCardConfig): void {
         this.cancelPendingWork();
@@ -135,9 +138,14 @@ export class UninusWeatherStationCard extends LitElement {
         if (this.hasUpdated) {
             this.observeSize();
         }
+        if (this.initialized && this.refreshOnReconnect) {
+            this.refreshOnReconnect = false;
+            this.refreshMeasurements(!(this.cardConfig?.disableAnimations ?? false));
+        }
     }
 
     public disconnectedCallback(): void {
+        this.refreshOnReconnect = this.initialized;
         this.cancelPendingWork();
         this.stopInterval();
         this.resizeObserver?.disconnect();
@@ -293,10 +301,14 @@ export class UninusWeatherStationCard extends LitElement {
                 this.cardConfig?.buttonsConfig?.disablePeriodSelectors();
                 this.cardConfig?.buttonsConfig?.undoPausedPlays();
                 if (this.cardConfig?.activePeriod.movePeriod(button.shiftPeriod)) {
+                    this.cancelPeriodShiftHighlight();
                     button.baseConfig.active = true;
+                    this.periodShiftHighlightButton = button;
                     this.refreshMeasurements(false);
                     this.requestUpdate();
-                    window.setTimeout(() => {
+                    this.periodShiftHighlightTimeout = window.setTimeout(() => {
+                        this.periodShiftHighlightTimeout = undefined;
+                        this.periodShiftHighlightButton = undefined;
                         button.baseConfig.active = false;
                         this.requestUpdate();
                     }, 150);
@@ -435,9 +447,21 @@ export class UninusWeatherStationCard extends LitElement {
         }
     }
 
+    private cancelPeriodShiftHighlight(): void {
+        if (this.periodShiftHighlightTimeout !== undefined) {
+            clearTimeout(this.periodShiftHighlightTimeout);
+            this.periodShiftHighlightTimeout = undefined;
+        }
+        if (this.periodShiftHighlightButton) {
+            this.periodShiftHighlightButton.baseConfig.active = false;
+            this.periodShiftHighlightButton = undefined;
+        }
+    }
+
     private cancelPendingWork(): void {
         this.requestGeneration++;
         this.stopPlayback();
+        this.cancelPeriodShiftHighlight();
         this.windRoseDirigent.cancelPendingRender();
     }
 

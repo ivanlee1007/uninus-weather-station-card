@@ -29,13 +29,17 @@ export class EntityStatesProcessor {
     private textBlockStates: EntityState[] = [];
 
     init(cardConfig: CardConfigWrapper) {
+        this.windSpeedStates = [];
+        this.windSpeedConverterFuncs = [];
+        this.entityStates = [];
+        this.cornerInfoStates = [];
+        this.textBlockStates = [];
         this.cardConfig = cardConfig;
         this.windDirectionConverter = new WindDirectionConverter(cardConfig.windDirectionEntity);
 
         this.windDirectionState = new EntityState(this.cardConfig.currentDirection.showArrow,
             this.cardConfig.windDirectionEntity.entity, this.cardConfig.windDirectionEntity.attribute);
 
-        this.windSpeedStates = [];
         this.cardConfig.windspeedEntities.forEach((windSpeedEntity, index) => {
             this.windSpeedStates.push(new EntityState(windSpeedEntity.currentSpeedArrow || this.cardConfig.currentDirection.showArrow, windSpeedEntity.entity, windSpeedEntity.attribute));
             this.windSpeedConverterFuncs.push(new WindSpeedConverter(SpeedUnits.getSpeedUnit(cardConfig.windspeedEntities[index].outputSpeedUnit))

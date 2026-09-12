@@ -93,6 +93,32 @@ describe("TouchFacesRenderer Home Assistant action events", () => {
             .toBe("object");
     });
 
+    it("preserves confirmation for every action type without the misspelled key", () => {
+        const cases: Array<[
+            "tap_action" | "hold_action" | "double_tap_action",
+            "createTapEventFunction" | "createHoldEventFunction" | "createDoubleTapEventFunction",
+        ]> = [
+            ["tap_action", "createTapEventFunction"],
+            ["hold_action", "createHoldEventFunction"],
+            ["double_tap_action", "createDoubleTapEventFunction"],
+        ];
+        const events: Array<FakeCustomEvent> = [];
+        const { renderer, restore } = createRenderer(events);
+        const confirmedAction = { ...action, confirmation: "Are you sure?" };
+
+        try {
+            cases.forEach(([, method]) => renderer[method](confirmedAction)());
+        } finally {
+            restore();
+        }
+
+        cases.forEach(([actionKey], index) => {
+            const eventConfig = (events[index].detail as { config: Record<string, Record<string, unknown>> }).config;
+            expect(eventConfig[actionKey].confirmation).toBe("Are you sure?");
+            expect(eventConfig[actionKey]).not.toHaveProperty("conformation");
+        });
+    });
+
     it("keeps the configured action object in the hold payload", () => {
         const events: Array<FakeCustomEvent> = [];
         const { renderer, restore } = createRenderer(events);

@@ -46,6 +46,46 @@ describe("normalizeWeatherStationConfig", () => {
         expect(normalized.windspeed_entities).toBe(config.windspeed_entities);
     });
 
+    it.each([
+        "wet",
+        ["on"],
+        1,
+        null,
+    ])("rejects non-object top-level rain_states %p with an exact config error", (rainStates) => {
+        const config = validConfig();
+        config.rain_states = rainStates as never;
+
+        expect(() => normalizeWeatherStationConfig(config)).toThrow(
+            new Error("UNINUS weather station card: rain_states must be an object."),
+        );
+    });
+
+    it.each([
+        ["wet", "on"],
+        ["wet", ["on", 1]],
+        ["dry", { state: "off" }],
+        ["dry", [false]],
+    ])("rejects malformed rain_states.%s with an exact config error", (key, value) => {
+        const config = validConfig() as UninusWeatherStationCardConfig & {
+            rain_states: Record<string, unknown>;
+        };
+        config.rain_states = { [key]: value };
+
+        expect(() => normalizeWeatherStationConfig(config)).toThrow(
+            new Error(`UNINUS weather station card: rain_states.${key} must be an array of strings.`),
+        );
+    });
+
+    it("produces rain mappings that classifyRainState can consume safely", () => {
+        const normalized = normalizeWeatherStationConfig({
+            ...validConfig(),
+            rain_states: { wet: ["rain"], dry: ["clear"] },
+        });
+
+        expect(classifyRainState("rain", normalized.rain_states)).toBe("wet");
+        expect(classifyRainState("clear", normalized.rain_states)).toBe("dry");
+    });
+
     it("validates configured optional device entities", () => {
         const config = validConfig();
         config.weather_entities.signal_strength = { entity: "" };

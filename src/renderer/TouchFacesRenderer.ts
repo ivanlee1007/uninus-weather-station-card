@@ -178,7 +178,7 @@ export class TouchFacesRenderer {
             perform_action: haAction.perform_action,
             data: haAction.data,
             target: haAction.target,
-            conformation: haAction.confirmation,
+            confirmation: haAction.confirmation,
             pipeline_id: haAction.pipeline_id
         }
     }

@@ -149,6 +149,12 @@ const requireEntity = (path: string, value: unknown): void => {
     }
 };
 
+const validateRainStates = (key: "wet" | "dry", value: unknown): void => {
+    if (value !== undefined && (!Array.isArray(value) || value.some(state => typeof state !== "string"))) {
+        throw new Error(`UNINUS weather station card: rain_states.${key} must be an array of strings.`);
+    }
+};
+
 export const normalizeWeatherStationConfig = (
     config: UninusWeatherStationCardConfig,
 ): NormalizedWeatherStationConfig => {
@@ -168,6 +174,12 @@ export const normalizeWeatherStationConfig = (
     if (config.weather_entities.connectivity !== undefined) {
         requireEntity("weather_entities.connectivity.entity", config.weather_entities.connectivity);
     }
+    if (config.rain_states !== undefined &&
+        (config.rain_states === null || typeof config.rain_states !== "object" || Array.isArray(config.rain_states))) {
+        throw new Error("UNINUS weather station card: rain_states must be an object.");
+    }
+    validateRainStates("wet", config.rain_states?.wet);
+    validateRainStates("dry", config.rain_states?.dry);
 
     return {
         ...config,

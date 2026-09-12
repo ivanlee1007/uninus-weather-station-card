@@ -17,10 +17,10 @@ export class HtmlRenderer {
 
     renderTextBlocks() {
         if (this.cardConfig.textBlocks.top && this.textBlockTop) {
-            this.textBlockTop.innerHTML = this.templateParser.parse(this.cardConfig.textBlocks.top.text);
+            this.textBlockTop.innerHTML = this.templateParser.parseHtml(this.cardConfig.textBlocks.top.text);
         }
         if (this.cardConfig.textBlocks.bottom && this.textBlockBottom) {
-            this.textBlockBottom.innerHTML = this.templateParser.parse(this.cardConfig.textBlocks.bottom.text);
+            this.textBlockBottom.innerHTML = this.templateParser.parseHtml(this.cardConfig.textBlocks.bottom.text);
         }
     }
 

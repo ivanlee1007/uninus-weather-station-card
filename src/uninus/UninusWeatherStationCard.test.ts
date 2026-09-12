@@ -61,6 +61,65 @@ describe("UninusWeatherStationCard request lifecycle", () => {
         expect(refreshData.mock.calls[0][0]).toEqual(expect.any(Function));
     });
 
+    it("refreshes immediately when an initialized card reconnects", async () => {
+        const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+        Object.assign(card, {
+            initialized: true,
+            cardConfig: { disableAnimations: false },
+            startInterval: jest.fn(),
+            stopInterval: jest.fn(),
+            observeSize: jest.fn(),
+            refreshMeasurements: jest.fn(),
+            cancelPendingWork: jest.fn(),
+            windRoseDirigent: { cancelPendingRender: jest.fn() },
+            hasUpdated: true,
+        });
+
+        card.disconnectedCallback();
+        card.connectedCallback();
+
+        expect(card.refreshMeasurements).toHaveBeenCalledWith(true);
+    });
+
+    it("cancels period-shift highlight timeouts on disconnect and setConfig", async () => {
+        jest.useFakeTimers();
+        const [{ UninusWeatherStationCard }, { PeriodShiftButton }] = await Promise.all([
+            import("./UninusWeatherStationCard"),
+            import("../config/buttons/types/PeriodShiftButton"),
+        ]);
+        const lifecycleActions = [
+            (card: any) => card.disconnectedCallback(),
+            (card: any) => card.setConfig(UninusWeatherStationCard.getStubConfig()),
+        ];
+
+        for (const lifecycleAction of lifecycleActions) {
+            const button = new PeriodShiftButton({ active: false } as never, "-1h");
+            const requestUpdate = jest.fn();
+            const card = Object.create(UninusWeatherStationCard.prototype) as any;
+            Object.assign(card, {
+                initialized: true,
+                cardConfig: {
+                    activePeriod: { movePeriod: jest.fn(() => true) },
+                    buttonsConfig: { disablePeriodSelectors: jest.fn(), undoPausedPlays: jest.fn() },
+                },
+                windRoseDirigent: { cancelPendingRender: jest.fn() },
+                refreshMeasurements: jest.fn(),
+                requestUpdate,
+                stopInterval: jest.fn(),
+                requestGeneration: 0,
+            });
+
+            card.handleButtonClickFunc(button)();
+            expect(button.baseConfig.active).toBe(true);
+            lifecycleAction(card);
+            expect(button.baseConfig.active).toBe(false);
+            requestUpdate.mockClear();
+            jest.advanceTimersByTime(150);
+            expect(requestUpdate).not.toHaveBeenCalled();
+        }
+    });
+
     it("cancels playback on setConfig and prevents its stale timeout from changing the new period", async () => {
         jest.useFakeTimers();
         const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
