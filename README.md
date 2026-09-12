@@ -4,7 +4,7 @@ A responsive Home Assistant Lovelace card for UNINUS weather-station data, combi
 
 UNINUS Weather Station Card 是一張適用於 Home Assistant 儀表板的響應式氣象站卡片。介面以繁體中文呈現即時溫度、濕度、照度、降雨、風速、風向、訊號與連線狀態，並整合歷史風向玫瑰圖。
 
-> 本專案尚未發布至 HACS 預設商店；請以「自訂儲存庫」方式安裝。v0.1.1 已在 Home Assistant 2026.9.1（`192.168.1.223`）完成實機驗證，詳見[驗證紀錄](./docs/live-test/README.md)。
+> 本專案尚未發布至 HACS 預設商店；請以「自訂儲存庫」方式安裝。v0.1.2 已在 Home Assistant 2026.9.1（`192.168.1.223`）透過 HACS 完成實機驗證，詳見[驗證紀錄](./docs/live-test/README.md)。
 
 ## 功能
 

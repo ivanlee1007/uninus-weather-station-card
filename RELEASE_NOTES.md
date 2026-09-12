@@ -1,5 +1,10 @@
 # UNINUS Weather Station Card — Development Notes
 
+## v0.1.2
+
+- 將實機部署由外部 CDN resource 轉為 HACS 管理的 `/hacsfiles/` resource。
+- 更新永久驗證紀錄，反映 HACS 安裝與單一 resource 回讀結果。
+
 ## v0.1.1
 
 - 修正正式 Release tag，使其指向已合併的 `main` 成果。

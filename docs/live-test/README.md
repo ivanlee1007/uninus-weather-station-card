@@ -6,15 +6,17 @@
 - Dashboard：`lovelace-uninus`
 - View：`weather-card-test`
 - 可操作頁面：`http://192.168.1.223:8123/lovelace-uninus/weather-card-test`
-- GitHub release：`v0.1.1`
+- GitHub release：`v0.1.2`
 - Lovelace type：`custom:uninus-weather-station-card`
 
 ## 部署內容
 
-- 唯一 Lovelace resource：`https://cdn.jsdelivr.net/gh/ivanlee1007/uninus-weather-station-card@v0.1.1/uninus-weather-station-card.js`
+- HACS repository：`ivanlee1007/uninus-weather-station-card`
+- HACS 狀態：`installed`，`installed_version == available_version == v0.1.2`
+- 唯一 Lovelace resource：`/hacsfiles/uninus-weather-station-card/uninus-weather-station-card.js`
 - Resource 類型：`module`
 - Release bundle SHA-256（LF）：`c15cc985c052a051441904f7294bd45942faa5eb4e38c203fbdecbb401890dfd`
-- 實機頁面已確認載入同一個 resource URL，並完成 `uninus-weather-station-card` custom element 註冊。
+- 實機頁面已確認載入 HACS resource（含 `hacstag` cache key），並完成 `uninus-weather-station-card` custom element 註冊。
 
 ## 保留的可操作測試 Helpers
 
