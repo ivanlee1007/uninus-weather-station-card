@@ -1,0 +1,22 @@
+UNINUS Weather Station Card — Attribution Notice
+
+This project is a derived work based on Lovelace Windrose Card:
+https://github.com/aukedejong/lovelace-windrose-card
+
+The historical wind-data acquisition, matching, conversion, configuration,
+and wind-rose rendering implementation originated in that upstream project.
+The UNINUS Weather Station Card adds its own custom element, weather-station
+presentation, current-condition fields, rain classification, responsive
+layout, packaging, and documentation around that implementation.
+
+The upstream README states that the project is under the MIT license, and the
+upstream package.json declares "license": "MIT". At the source revision from
+which this repository was derived, no standalone upstream LICENSE file or
+copyright-holder name was present in those sources. This notice therefore
+records the source and license declaration factually without assigning an
+unverified copyright holder.
+
+Local copies of upstream screenshots and demonstrations under example/ and
+examples/ remain upstream reference material unless separately replaced.
+
+See LICENSE for this repository's MIT license terms.

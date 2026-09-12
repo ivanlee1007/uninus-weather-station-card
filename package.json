@@ -1,16 +1,20 @@
 {
-  "name": "ha-windrose-card-project",
-  "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
+  "name": "uninus-weather-station-card",
+  "version": "0.1.0",
+  "description": "Responsive UNINUS weather station and wind rose card for Home Assistant Lovelace",
+  "main": "uninus-weather-station-card.js",
   "type": "module",
   "scripts": {
     "http-server": "http-server ./",
     "lint": "npx eslint .",
     "typecheck": "tsc --noEmit",
-    "esbuild": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js",
+    "build": "npm run esbuild-uninus",
+    "esbuild": "npm run esbuild-windrose && npm run esbuild-uninus",
+    "esbuild-windrose": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js && node scripts/normalize-build-output.cjs build/windrose-card.js",
+    "esbuild-uninus": "esbuild src/uninus/UninusWeatherStationCard.ts --bundle --minify --target=es2017 --outfile=build/uninus-weather-station-card.js && node scripts/normalize-build-output.cjs build/uninus-weather-station-card.js && node -e \"require('node:fs').copyFileSync('build/uninus-weather-station-card.js', 'uninus-weather-station-card.js')\"",
     "esbuild-watch": "esbuild src/card/WindRoseCard.ts --bundle --minify --target=es2017 --outfile=build/windrose-card.js --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "esbuild-uninus-watch": "esbuild src/uninus/UninusWeatherStationCard.ts --bundle --minify --target=es2017 --outfile=build/uninus-weather-station-card.js --watch",
+    "test": "jest --runInBand"
   },
   "keywords": [
     "home-assistant",
@@ -20,7 +24,9 @@
     "lovelace",
     "custom-cards",
     "windrose",
-    "weatherstation"
+    "weather-station",
+    "uninus",
+    "taiwan"
   ],
   "author": "",
   "license": "MIT",
@@ -28,6 +34,7 @@
     "@babel/core": "^7.26.0",
     "@babel/preset-env": "^7.26.0",
     "@babel/preset-typescript": "^7.26.0",
+    "@eslint/js": "^9.39.4",
     "@jest/globals": "^29.7.0",
     "@typescript-eslint/eslint-plugin": "^8.56.0",
     "@typescript-eslint/parser": "^8.56.0",

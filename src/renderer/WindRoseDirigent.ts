@@ -57,9 +57,9 @@ export class WindRoseDirigent {
     private dimensionCalculator!: DimensionCalculator;
     private windRoseRenderer!: WindRoseRenderer;
     private windBarRenderers: WindBarRenderer[] = [];
-    private currentDirectionRenderer!: CurrentDirectionRenderer;
+    private currentDirectionRenderer?: CurrentDirectionRenderer;
     private currentSpeedRenderers: CurrentSpeedRenderer[] = [];
-    private infoCornersRendeerer!: InfoCornersRenderer;
+    private infoCornersRendeerer?: InfoCornersRenderer;
     private touchFacesRenderer!: TouchFacesRenderer;
     private templateParser!: TemplateParser;
     private htmlRenderer!: HtmlRenderer;
@@ -73,6 +73,8 @@ export class WindRoseDirigent {
     private readonly sendEvent: (event: CustomEvent) => void;
     private initReady = false;
     private measurementsReady = false;
+    private renderGeneration = 0;
+    private pendingRenderTimeout?: ReturnType<typeof setTimeout>;
 
     constructor(svg: Svg, sendEvent: (event: CustomEvent) => void) {
         this.svg = svg;
@@ -86,6 +88,7 @@ export class WindRoseDirigent {
          hass: HomeAssistant): void {
 
         this.log.method("init");
+        this.resetForInit();
         this.initReady = true;
         this.measurementsReady = false;
         this.cardConfig = cardConfig;
@@ -140,7 +143,6 @@ export class WindRoseDirigent {
             this.infoCornersRendeerer = new InfoCornersRenderer(cardConfig.cornersInfo, this.dimensionCalculator, this.svg);
         }
 
-        this.windBarRenderers = [];
         if (!cardConfig.hideWindspeedBar) {
             for (let i = 0; i < cardConfig.windBarCount(); i++) {
                 this.windBarRenderers.push(new WindBarRenderer(this.cardConfig, this.dimensionCalculator, this.outputSpeedUnits[i], this.speedRangeServices[i], i, this.svgUtil));
@@ -150,10 +152,23 @@ export class WindRoseDirigent {
             }
         }
 
-        this.windRoseData = [];
     }
 
-    refreshData(): Promise<MeasurementHolder> {
+    private resetForInit(): void {
+        this.cancelPendingRender();
+        this.measurementCounters = [];
+        this.outputSpeedUnits = [];
+        this.speedRangeServices = [];
+        this.windBarRenderers = [];
+        this.currentSpeedRenderers = [];
+        this.windRoseData = [];
+        this.backgroundElement = undefined;
+        this.currentDirectionRenderer = undefined;
+        this.infoCornersRendeerer = undefined;
+        this.infoText = '';
+    }
+
+    refreshData(isCurrent: () => boolean = () => true): Promise<MeasurementHolder> {
         const activeSpeedEntityIndex = this.getActiveSpeedEntity();
         if (!this.initReady) {
             this.log.method('refreshData', 'not inited yet');
@@ -165,6 +180,9 @@ export class WindRoseDirigent {
         this.windRoseData = [];
 
         return this.measurementProvider.getMeasurements().then((measurementHolder: MeasurementHolder) => {
+            if (!isCurrent()) {
+                return Promise.reject(new Error("Stale measurement request"));
+            }
 
             const matchedGroups = this.measurementMatcher.match(measurementHolder);
             this.templateParser.addMatchedValues(matchedGroups[activeSpeedEntityIndex]);
@@ -199,6 +217,8 @@ export class WindRoseDirigent {
     }
 
     renderGraphs(animate: boolean): void {
+        this.cancelPendingRender();
+        const renderGeneration = this.renderGeneration;
         const activeSpeedEntityIndex = this.getActiveSpeedEntity();
         if (!this.initReady || !this.measurementsReady) {
             this.log.method("renderGraphs', 'Not ready yet " + this.initReady + " - "  + this.measurementsReady);
@@ -211,7 +231,9 @@ export class WindRoseDirigent {
                 this.windBarRenderers[i].animateRemoveGraph();
             }
         }
-        setTimeout(() => {
+        this.pendingRenderTimeout = setTimeout(() => {
+            if (renderGeneration !== this.renderGeneration) return;
+            this.pendingRenderTimeout = undefined;
             this.windRoseRenderer.removeGraphs();
             this.log.debug('renderGraphs()', this.svg, this.windRoseData, this.windBarRenderers);
             this.windRoseRenderer.drawWindRose(this.windRoseData[activeSpeedEntityIndex], this.speedRangeServices[activeSpeedEntityIndex], animate);
@@ -237,6 +259,14 @@ export class WindRoseDirigent {
         }, animate ? 300 : 0);
     }
 
+    cancelPendingRender(): void {
+        this.renderGeneration++;
+        if (this.pendingRenderTimeout !== undefined) {
+            clearTimeout(this.pendingRenderTimeout);
+            this.pendingRenderTimeout = undefined;
+        }
+    }
+
     updateStateRender(): void {
         if (!this.initReady || !this.measurementsReady) {
             this.log.method("updateStateRender', 'Not ready yet " + this.initReady + " - " + this.measurementsReady);
@@ -258,7 +288,7 @@ export class WindRoseDirigent {
             this.windRoseRenderer.rotateWindRose();
         }
         if (this.entityStatesProcessor.hasCornerInfoUpdates()) {
-            this.infoCornersRendeerer.drawCornerValues(this.entityStatesProcessor.getCornerInfoStates());
+            this.infoCornersRendeerer?.drawCornerValues(this.entityStatesProcessor.getCornerInfoStates());
         }
         if (this.entityStatesProcessor.hasTextBlockUpdates()) {
             this.templateParser.addEntityStates(this.entityStatesProcessor.getTextBlockStates());

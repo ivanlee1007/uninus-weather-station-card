@@ -122,7 +122,7 @@ export class TemplateParser {
 
     public parse(template: string): string {
         this.templateValues.forEach(templateValue => {
-            template = template.replace(templateValue.matchValue(), templateValue.value);
+            template = template.replace(templateValue.matchValue(), () => templateValue.value);
         });
         // Removed left over placeholders.
         const matches = Array.from(template.matchAll(/\$\{([^}]+)\}/g), m => m[0]);
@@ -130,6 +130,29 @@ export class TemplateParser {
             template = template.replace(placeholder, '');
         }
         return template;
+    }
+
+    public parseHtml(template: string): string {
+        this.templateValues.forEach(templateValue => {
+            template = template.replace(
+                templateValue.matchValue(),
+                () => TemplateParser.escapeHtml(templateValue.value),
+            );
+        });
+        const matches = Array.from(template.matchAll(/\$\{([^}]+)\}/g), m => m[0]);
+        for (const placeholder of matches) {
+            template = template.replace(placeholder, '');
+        }
+        return template;
+    }
+
+    private static escapeHtml(value: string): string {
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     public static findEntityPlaceholders(template: string | undefined): EntityState[] {

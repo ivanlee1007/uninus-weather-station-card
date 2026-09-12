@@ -134,7 +134,7 @@ export class TouchFacesRenderer {
     }
 
     createDoubleTapEventFunction(haAction: CardConfigHaAction): () => void {
-        const actionObj = this.createTapEventFunction(haAction);
+        const actionObj = this.createActionObject(haAction);
         const event = new CustomEvent("hass-action", {
             bubbles: true,
             composed: true,
@@ -178,7 +178,7 @@ export class TouchFacesRenderer {
             perform_action: haAction.perform_action,
             data: haAction.data,
             target: haAction.target,
-            conformation: haAction.confirmation,
+            confirmation: haAction.confirmation,
             pipeline_id: haAction.pipeline_id
         }
     }
