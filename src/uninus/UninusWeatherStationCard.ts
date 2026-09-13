@@ -1,5 +1,6 @@
 import { Svg, SVG } from "@svgdotjs/svg.js";
 import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
+import { styleMap } from "lit/directives/style-map.js";
 import { customElement, query } from "lit/decorators.js";
 import { CardConfigWrapper } from "../config/CardConfigWrapper";
 import { ButtonInterface } from "../config/buttons/ButtonInterface";
@@ -10,6 +11,7 @@ import { WindRoseSpeedSelectButton } from "../config/buttons/types/WindRoseSpeed
 import { EntityChecker } from "../entity-checker/EntityChecker";
 import { EntityStatesProcessor } from "../entity-state-processing/EntityStatesProcessor";
 import { DateTimeFormatter } from "../formatter/DateTimeFormatter";
+
 import { HAMeasurementProvider } from "../measurement-provider/HAMeasurementProvider";
 import { HAWebservice } from "../measurement-provider/HAWebservice";
 import { MeasurementHolder } from "../measurement-provider/MeasurementHolder";
@@ -21,12 +23,24 @@ import {
     classifyResponsiveMode,
     createMoreInfoEvent,
     formatEntityState,
+    getRainLabel,
     groupButtonsForLocation,
+    isRainAnimationEnabled,
+    isSafeCssColor,
+    normalizeSpeedRanges,
     normalizeWeatherStationConfig,
+    resolveActiveWindSpeedIndex,
+    resolveEightDirection,
+    resolveSpeedRange,
+    resolveValueRange,
+    resolveWindSpeedDisplayUnit,
+    type EightDirectionKey,
     type EntityDisplay,
     type NormalizedWeatherStationConfig,
     type ResponsiveMode,
+    type SpeedColorRange,
     type UninusWeatherStationCardConfig,
+    type ValueRange,
 } from "./UninusWeatherHelpers";
 
 declare global {
@@ -34,6 +48,7 @@ declare global {
         customCards?: Array<Record<string, unknown>>;
     }
 }
+
 
 window.customCards = window.customCards || [];
 if (!window.customCards.some(card => card.type === "uninus-weather-station-card")) {
@@ -163,62 +178,104 @@ export class UninusWeatherStationCard extends LitElement {
         const signal = formatEntityState(states, weather?.signal_strength);
         const connectivity = formatEntityState(states, weather?.connectivity);
         const windDirection = formatEntityState(states, this.config?.wind_direction_entity);
-        const windSpeed = formatEntityState(states, this.config?.windspeed_entities[0]);
+        const activeWindSpeedIndex = this.cardConfig?.windspeedEntities
+            ? resolveActiveWindSpeedIndex(this.cardConfig.windspeedEntities)
+            : 0;
+        const windSpeedIndex = activeWindSpeedIndex >= 0 ? activeWindSpeedIndex : 0;
+        const windSpeedConfig = this.config?.windspeed_entities[windSpeedIndex];
+        const windSpeed = formatEntityState(states, windSpeedConfig);
+        const rawRainState = weather?.rain.entity ? states[weather.rain.entity]?.state : undefined;
         const rainClass = classifyRainState(
-            rain.available ? rain.value : undefined,
+            rawRainState,
             this.config?.rain_states ?? { wet: [], dry: [] },
         );
-        const connected = connectivity.available && !["off", "false", "disconnected"].includes(connectivity.value.trim().toLowerCase());
+        const rainMotion = isRainAnimationEnabled(rainClass, this.cardConfig?.disableAnimations ?? false);
+        const directionConfig = this.config?.direction_labels as {
+            custom_labels?: Partial<Record<EightDirectionKey, string>>;
+        } | undefined;
+        const processedDirection = this.initialized ? this.entityStateProcessor.getWindDirection() : undefined;
+        const direction = resolveEightDirection(processedDirection ?? windDirection.value, directionConfig?.custom_labels);
+        const processedSpeed = this.initialized ? this.entityStateProcessor.getWindSpeed(windSpeedIndex, false) : undefined;
+        const currentSpeedValue = processedSpeed ?? windSpeed.value;
+        const activeWindSpeedConfig = this.cardConfig?.windspeedEntities?.[windSpeedIndex];
+        const currentSpeedUnit = resolveWindSpeedDisplayUnit(
+            processedSpeed,
+            windSpeed.unit,
+            activeWindSpeedConfig?.outputSpeedUnit,
+            activeWindSpeedConfig?.outputSpeedUnitLabel,
+        );
+        const configuredSpeedRanges = (windSpeedConfig?.speed_ranges ?? undefined) as
+            SpeedColorRange[] | undefined;
+        const speedRanges = normalizeSpeedRanges(configuredSpeedRanges);
+        const speedRange = resolveSpeedRange(currentSpeedValue, speedRanges);
+        const connected = connectivity.available &&
+            !["off", "false", "disconnected"].includes(connectivity.value.trim().toLowerCase());
+        const signalNumber = signal.available ? Number(signal.value) : Number.NaN;
+        const maintenanceTone = connectivity.entity && !connected ? "offline" :
+            Number.isFinite(signalNumber) && signalNumber <= -75 ? "weak" : "normal";
+        const configuredDirectionArrowColor = (this.config?.colors as Record<string, unknown> | undefined)
+            ?.rose_current_direction_arrow;
+        const directionArrowColor = isSafeCssColor(configuredDirectionArrowColor)
+            ? configuredDirectionArrowColor
+            : "#d94b3f";
 
         return html`
             <ha-card class=${this.responsiveMode}>
                 <header>
-                    <div class="logo" aria-hidden="true">U</div>
+                    <div class="logo" aria-hidden="true"><span>U</span></div>
                     <div class="identity">
+                        <span class="atlas-kicker">ATMOSPHERIC ATLAS · LIVE</span>
                         <strong>${this.config?.name ?? "UNINUS 氣象站"}</strong>
                         <span>${this.config?.device_label ?? "外部環境氣象站"}</span>
                     </div>
-                    <div class="status">
-                        ${this.renderMetric(signal, "⌁", "status-chip")}
-                        <button class="status-chip ${connected ? "online" : ""}"
-                            ?disabled=${!connectivity.entity}
-                            @click=${() => this.showMoreInfo(connectivity.entity)}>
-                            ${connectivity.available ? connectivity.value : "連線狀態 —"}
-                        </button>
-                    </div>
+                    <div class="live-mark"><i></i><span>即時監測</span></div>
                 </header>
 
                 <main>
                     <aside class="column environment-column">
-                        <section class="panel environment">
-                            <span class="eyebrow">室外環境</span>
-                            ${this.renderMetric(temperature, "", "temperature")}
-                            <div class="humidity-row">
-                                <span>相對濕度</span>${this.renderMetric(humidity, "", "inline-value")}
-                            </div>
+                        <section class="panel section-heading">
+                            <span class="section-index">01</span>
+                            <div><span class="eyebrow">ENVIRONMENT</span><strong>室外環境</strong></div>
                         </section>
-                        <section class="panel sensor-panel">
-                            <span class="eyebrow">☀ ${illuminance.name || "光照度"}</span>
-                            ${this.renderMetric(illuminance, "", "sensor-value")}
-                        </section>
+                        ${this.renderWeatherMetric(temperature, weather?.temperature.value_ranges, "temperature", "溫度")}
+                        ${this.renderWeatherMetric(humidity, weather?.humidity.value_ranges, "humidity", "相對濕度")}
                     </aside>
 
                     <section class="panel wind-panel">
                         <div class="wind-header">
-                            <strong>風速／風向圖</strong>
+                            <div class="wind-title">
+                                <span class="section-index">02</span>
+                                <div><span class="eyebrow">WIND HISTORY</span><strong>風速／風向圖</strong></div>
+                            </div>
                             ${this.renderButtons("top")}
                         </div>
                         <div id="text-block-top" class="engine-text"></div>
                         ${this.renderButtons("top-below-text")}
                         <div class="wind-content">
-                            <div id="svg-container" aria-label="歷史風向玫瑰圖"></div>
-                            <div class="wind-current">
+                            <div id="svg-container" role="img" aria-label="歷史風向玫瑰圖"></div>
+                            <aside class="wind-current">
                                 <span class="eyebrow">目前風況</span>
-                                ${this.renderMetric(windSpeed, "", "wind-speed")}
-                                <div class="wind-direction">
-                                    <span>風向</span>${this.renderMetric(windDirection, "", "inline-value")}
-                                </div>
-                            </div>
+                                <button class="wind-speed" style=${styleMap({ "--speed-color": speedRange?.color || "var(--uninus-green)" })}
+                                    ?disabled=${!windSpeed.entity} @click=${() => this.showMoreInfo(windSpeed.entity)}>
+                                    <strong>${processedSpeed === undefined ? windSpeed.value : processedSpeed.toFixed(1)}</strong>
+                                    <small>${currentSpeedUnit}</small>
+                                </button>
+                                <button class="wind-direction-readout" ?disabled=${!windDirection.entity}
+                                    @click=${() => this.showMoreInfo(windDirection.entity)}>
+                                    <span class="direction-arrow" style=${styleMap({
+                                        "--direction-angle": `${direction?.degrees ?? 0}deg`,
+                                        "--direction-arrow-color": directionArrowColor,
+                                    })}>↑</span>
+                                    <span><strong>${direction?.label ?? "—"}</strong><small>${direction ? `${direction.degrees.toFixed(0)}°` : "—"}</small></span>
+                                </button>
+                                ${speedRanges.length ? html`<div class="speed-legend" role="list" aria-label="風速色階">
+                                    ${speedRanges.map((range, index) => html`<span role="listitem" class=${range === speedRange ? "active" : ""}
+                                        style=${styleMap({ "--range-color": range.color })}
+                                        title=${`${range.from_value} ${currentSpeedUnit}`}>
+                                        <i></i><small>${range.from_value}${index === speedRanges.length - 1 ? "+" : ""}</small>
+                                    </span>`)}
+                                </div>` : ""}
+                            </aside>
                         </div>
                         ${this.renderButtons("bottom-above-text")}
                         <div id="text-block-bottom" class="engine-text"></div>
@@ -226,29 +283,66 @@ export class UninusWeatherStationCard extends LitElement {
                         ${this.errorMessage ? html`<div class="error" role="alert">${this.errorMessage}</div>` : ""}
                     </section>
 
-                    <aside class="column device-column">
-                        <section class="panel rain ${rainClass}">
-                            <span class="eyebrow">☂ ${rain.name || "降雨狀態"}</span>
-                            <button class="rain-value" ?disabled=${!rain.entity}
-                                @click=${() => this.showMoreInfo(rain.entity)}>
-                                ${this.rainLabel(rainClass)}
-                            </button>
-                            <span class="rain-detail">${rain.available ? rain.value : "感測資料無法使用"}</span>
+                    <aside class="column conditions-column">
+                        <section class="panel section-heading">
+                            <span class="section-index">03</span>
+                            <div><span class="eyebrow">CONDITIONS</span><strong>現場狀態</strong></div>
                         </section>
-                        <section class="panel device">
-                            <span class="eyebrow">裝置狀態</span>
-                            <div><span>訊號強度</span>${this.renderMetric(signal, "", "inline-value")}</div>
-                            <div><span>連線</span>${this.renderMetric(connectivity, "", "inline-value")}</div>
+                        <section class="panel light-panel">
+                            <span class="weather-icon" aria-hidden="true">☀</span>
+                            <div><span class="eyebrow">${illuminance.name || "光照度"}</span>
+                                ${this.renderMetric(illuminance, "", "sensor-value")}</div>
+                        </section>
+                        <section class="panel rain ${rainClass} ${rainMotion ? "animated" : ""}">
+                            <div class="rain-copy">
+                                <span class="eyebrow">${rain.name || "降雨狀態"}</span>
+                                <button class="rain-value" ?disabled=${!rain.entity}
+                                    @click=${() => this.showMoreInfo(rain.entity)}>${getRainLabel(rainClass)}</button>
+                                <span class="rain-detail">二元降雨感測</span>
+                            </div>
+                            <div class="rain-symbol" aria-hidden="true">
+                                <span class="cloud">☁</span>
+                                ${rainMotion ? html`<span class="rain-motion">
+                                    <i></i><i></i><i></i><i></i>
+                                    <b></b><b></b>
+                                </span>` : html`<span class="rain-static">${rainClass === "dry" ? "◇" : "—"}</span>`}
+                            </div>
                         </section>
                     </aside>
                 </main>
 
-                <footer>
-                    <span>UNINUS WEATHER STATION</span>
-                    <span>最後更新 ${this.formatLastUpdated(temperature.lastUpdated)}</span>
+                <footer class="maintenance-strip ${maintenanceTone}">
+                    <span class="maintenance-brand">UNINUS WEATHER STATION</span>
+                    <span>${this.config?.device_label ?? "外部環境氣象站"}</span>
+                    ${connectivity.entity ? html`<button @click=${() => this.showMoreInfo(connectivity.entity)}>
+                        <i></i>${connectivity.available ? (connected ? "已連線" : "離線") : "連線狀態無法使用"}
+                    </button>` : ""}
+                    ${signal.entity ? html`<button @click=${() => this.showMoreInfo(signal.entity)}>
+                        訊號 ${signal.available ? `${signal.value}${signal.unit ? ` ${signal.unit}` : ""}` : "無法使用"}
+                    </button>` : ""}
+                    <span class="updated">最後更新 ${this.formatLastUpdated(temperature.lastUpdated)}</span>
                 </footer>
             </ha-card>
         `;
+    }
+
+    private renderWeatherMetric(
+        display: EntityDisplay,
+        ranges: ValueRange[] | undefined,
+        className: string,
+        fallbackName: string,
+    ): TemplateResult {
+        const range = resolveValueRange(display.available ? display.value : undefined, ranges);
+        return html`<section class="panel weather-metric ${className}"
+            style=${styleMap({ "--metric-color": range?.color || "var(--uninus-muted)" })}>
+            <div class="metric-heading"><span>${display.name || fallbackName}</span>
+                <strong>${display.available ? (range?.label || "正常") : "資料無法使用"}</strong></div>
+            ${this.renderMetric(display, "", "primary-reading")}
+            <div class="range-track" aria-hidden="true">
+                ${(ranges ?? []).map(item => html`<i class=${item === range ? "active" : ""}
+                    style=${styleMap({ "--range-color": item.color })}></i>`)}
+            </div>
+        </section>`;
     }
 
     private renderMetric(display: EntityDisplay, prefix: string, className: string): TemplateResult {
@@ -498,13 +592,6 @@ export class UninusWeatherStationCard extends LitElement {
         if (entityId) this.dispatchEvent(createMoreInfoEvent(entityId));
     }
 
-    private rainLabel(classification: ReturnType<typeof classifyRainState>): string {
-        if (classification === "wet") return "偵測到降雨";
-        if (classification === "dry") return "目前沒有降雨";
-        if (classification === "unknown") return "未知降雨狀態";
-        return "降雨資料無法使用";
-    }
-
     private formatLastUpdated(value: string | undefined): string {
         if (!value) return "—";
         const date = new Date(value);
@@ -519,74 +606,138 @@ export class UninusWeatherStationCard extends LitElement {
             :host { display: block; color: var(--primary-text-color); }
             * { box-sizing: border-box; }
             ha-card {
-                --uninus-green: var(--primary-color, #1d745e);
-                --uninus-muted: var(--secondary-text-color, #71827b);
-                --uninus-line: var(--divider-color, #dce7e0);
+                --uninus-green: #176d58;
+                --uninus-teal: #178b83;
+                --uninus-ink: var(--primary-text-color, #17362e);
+                --uninus-muted: var(--secondary-text-color, #6f817a);
+                --uninus-line: color-mix(in srgb, var(--uninus-green) 15%, var(--divider-color, #dce7e0));
+                --uninus-paper: color-mix(in srgb, var(--card-background-color, #fff) 95%, #f3eddf);
+                container-type: inline-size;
                 overflow: hidden;
-                border-radius: var(--ha-card-border-radius, 20px);
-                background: linear-gradient(145deg, var(--card-background-color, #fff), color-mix(in srgb, var(--primary-color, #1d745e) 5%, var(--card-background-color, #fff)));
+                border-radius: var(--ha-card-border-radius, 24px);
+                color: var(--uninus-ink);
+                background:
+                    radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--uninus-green) 10%, transparent), transparent 28%),
+                    linear-gradient(145deg, var(--uninus-paper), color-mix(in srgb, var(--uninus-paper) 88%, #e5f0e9));
+                box-shadow: 0 14px 42px color-mix(in srgb, #123b31 13%, transparent);
             }
-            header { min-height: 68px; padding: 10px 18px; display: flex; align-items: center; border-bottom: 1px solid var(--uninus-line); gap: 10px; }
-            .logo { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 12px; display: grid; place-items: center; color: var(--text-primary-color, #fff); background: var(--uninus-green); font-weight: 900; }
-            .identity { display: grid; gap: 2px; }
-            .identity strong { font-size: 16px; }
-            .identity span, .eyebrow, footer { color: var(--uninus-muted); font-size: 10px; letter-spacing: .06em; }
-            .status { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
             button { font: inherit; }
-            .metric, .status-chip, .rain-value { appearance: none; border: 0; background: transparent; color: inherit; cursor: pointer; padding: 0; }
-            .metric:disabled, .status-chip:disabled, .rain-value:disabled { cursor: default; opacity: 1; }
-            .status-chip { padding: 6px 8px; border-radius: 9px; background: color-mix(in srgb, var(--uninus-muted) 10%, transparent); color: var(--uninus-muted); font-size: 10px; }
-            .status-chip.online { color: var(--uninus-green); background: color-mix(in srgb, var(--uninus-green) 12%, transparent); }
-            main { display: grid; grid-template-columns: minmax(160px, 190px) minmax(330px, 1fr) minmax(160px, 190px); gap: 12px; padding: 12px; }
-            .column { display: grid; align-content: start; gap: 10px; }
-            .panel { min-width: 0; padding: 14px; border: 1px solid var(--uninus-line); border-radius: 15px; background: color-mix(in srgb, var(--card-background-color, #fff) 88%, transparent); }
-            .environment { display: grid; gap: 11px; }
-            .temperature { display: inline-flex; align-items: start; justify-content: flex-start; gap: 3px; }
-            .temperature strong { color: var(--uninus-green); font-size: 42px; line-height: 1; font-weight: 400; }
-            .temperature small { font-size: 16px; }
-            .humidity-row, .wind-direction, .device div { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--uninus-muted); font-size: 12px; }
-            .inline-value { display: inline-flex; gap: 2px; color: var(--primary-text-color); }
-            .sensor-panel { display: grid; gap: 12px; }
-            .sensor-value { display: inline-flex; align-items: baseline; gap: 4px; justify-content: flex-start; }
-            .sensor-value strong { font-size: 24px; color: #d98b2b; }
+            button:focus-visible { outline: 2px solid var(--uninus-teal); outline-offset: 2px; }
+            header { min-height: 82px; padding: 15px 20px; display: flex; align-items: center; gap: 13px; border-bottom: 1px solid var(--uninus-line); }
+            .logo { width: 47px; height: 47px; flex: 0 0 47px; border-radius: 15px 15px 15px 5px; display: grid; place-items: center; color: #fff; background: linear-gradient(145deg, #1e826b, #125545); box-shadow: 0 7px 16px color-mix(in srgb, var(--uninus-green) 25%, transparent); }
+            .logo span { font-family: Georgia, serif; font-size: 25px; font-weight: 800; }
+            .identity { min-width: 0; display: grid; gap: 2px; }
+            .identity strong { font-family: Georgia, "Noto Serif TC", serif; font-size: 19px; letter-spacing: .02em; }
+            .identity > span:last-child { color: var(--uninus-muted); font-size: 11px; }
+            .atlas-kicker, .eyebrow { color: var(--uninus-teal); font-size: 10px; font-weight: 750; letter-spacing: .15em; }
+            .live-mark { margin-left: auto; display: flex; align-items: center; gap: 7px; color: var(--uninus-muted); font-size: 11px; white-space: nowrap; }
+            .live-mark i, .maintenance-strip button i { width: 7px; height: 7px; border-radius: 50%; background: #2e9a69; box-shadow: 0 0 0 4px color-mix(in srgb, #2e9a69 13%, transparent); }
+            main { display: grid; grid-template-columns: minmax(174px, .72fr) minmax(360px, 1.8fr) minmax(174px, .72fr); gap: 12px; padding: 12px; }
+            .column { min-width: 0; display: grid; align-content: start; gap: 10px; }
+            .panel { min-width: 0; padding: 14px; border: 1px solid var(--uninus-line); border-radius: 17px; background: color-mix(in srgb, var(--card-background-color, #fff) 83%, transparent); box-shadow: inset 0 1px color-mix(in srgb, #fff 60%, transparent); }
+            .section-heading { min-height: 58px; display: flex; align-items: center; gap: 10px; background: transparent; box-shadow: none; }
+            .section-heading > div, .wind-title > div { display: grid; gap: 2px; }
+            .section-heading strong, .wind-title strong { font-family: Georgia, "Noto Serif TC", serif; font-size: 14px; }
+            .section-index { color: color-mix(in srgb, var(--uninus-green) 38%, transparent); font-family: Georgia, serif; font-size: 25px; font-style: italic; }
+            .weather-metric { min-height: 132px; display: grid; align-content: space-between; gap: 10px; }
+            .metric-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--uninus-muted); font-size: 11px; }
+            .metric-heading strong { color: var(--metric-color); font-size: 10px; letter-spacing: .08em; }
+            .metric, .wind-speed, .wind-direction-readout, .rain-value, .maintenance-strip button { appearance: none; border: 0; background: transparent; color: inherit; cursor: pointer; padding: 0; }
+            .metric:disabled, .wind-speed:disabled, .wind-direction-readout:disabled, .rain-value:disabled { cursor: default; opacity: 1; }
+            .primary-reading { display: inline-flex; align-items: flex-start; justify-content: flex-start; gap: 3px; color: var(--metric-color); }
+            .primary-reading strong { font-family: Georgia, "Noto Serif TC", serif; font-size: clamp(35px, 4.2cqw, 48px); font-weight: 400; line-height: .95; }
+            .primary-reading small { font-size: 14px; font-weight: 650; }
+            .range-track { height: 4px; display: flex; gap: 3px; }
+            .range-track i { flex: 1; border-radius: 4px; background-color: color-mix(in srgb, var(--range-color) 32%, transparent); }
+            .range-track i.active { background-color: var(--range-color); box-shadow: 0 0 0 2px color-mix(in srgb, var(--range-color) 13%, transparent); }
             .wind-panel { padding: 0; overflow: hidden; }
-            .wind-header { min-height: 48px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--uninus-line); }
+            .wind-header { min-height: 59px; padding: 9px 13px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--uninus-line); }
+            .wind-title { display: flex; align-items: center; gap: 9px; }
             .periods { margin: 8px 12px; display: grid; gap: 4px; }
             .wind-header .periods { margin: 0 0 0 auto; }
-            .period-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
-            .periods button { border: 1px solid var(--uninus-line); border-radius: 8px; padding: 4px 7px; color: var(--uninus-muted); background: transparent; cursor: pointer; font-size: 10px; }
-            .periods button.active { color: var(--text-primary-color, #fff); background: var(--uninus-green); border-color: var(--uninus-green); }
-            .wind-content { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(95px, .34fr); min-height: 300px; }
-            #svg-container { min-width: 0; min-height: 300px; padding: 8px; }
-            .wind-current { display: grid; align-content: center; gap: 12px; padding: 12px; border-left: 1px solid var(--uninus-line); }
-            .wind-speed { display: inline-flex; align-items: baseline; justify-content: center; gap: 4px; }
-            .wind-speed strong { font-size: 30px; color: var(--uninus-green); }
-            .engine-text { padding: 0 12px; overflow-wrap: anywhere; font-size: 11px; }
+            .period-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; }
+            .periods button { min-height: 29px; border: 1px solid var(--uninus-line); border-radius: 9px; padding: 4px 8px; color: var(--uninus-muted); background: color-mix(in srgb, var(--card-background-color, #fff) 75%, transparent); cursor: pointer; font-size: 11px; font-weight: 650; }
+            .periods button.active { color: #fff; background: var(--uninus-green); border-color: var(--uninus-green); outline: 2px solid color-mix(in srgb, var(--uninus-green) 42%, transparent); outline-offset: 1px; box-shadow: 0 4px 10px color-mix(in srgb, var(--uninus-green) 20%, transparent); }
+            .wind-content { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(145px, .42fr); min-height: 332px; }
+            #svg-container { min-width: 0; min-height: 332px; padding: 8px; }
+            .wind-current { min-width: 0; display: grid; align-content: center; gap: 14px; padding: 15px; border-left: 1px solid var(--uninus-line); background: linear-gradient(180deg, color-mix(in srgb, var(--uninus-teal) 4%, transparent), transparent); }
+            .wind-speed { display: inline-flex; align-items: baseline; justify-content: flex-start; gap: 4px; color: var(--speed-color); }
+            .wind-speed strong { font-family: Georgia, serif; font-size: 37px; line-height: 1; font-weight: 500; }
+            .wind-speed small { color: var(--uninus-muted); font-size: 11px; }
+            .wind-direction-readout { display: flex; align-items: center; gap: 11px; text-align: left; }
+            .wind-direction-readout > span:last-child { display: grid; gap: 1px; }
+            .wind-direction-readout strong { font-family: Georgia, "Noto Serif TC", serif; font-size: 20px; }
+            .wind-direction-readout small { color: var(--uninus-muted); font-size: 11px; }
+            .direction-arrow { width: 43px; height: 43px; display: grid; place-items: center; border: 1px solid var(--uninus-line); border-radius: 50%; color: var(--direction-arrow-color); font-size: 25px; transform: rotate(var(--direction-angle)); background: color-mix(in srgb, var(--card-background-color, #fff) 80%, transparent); }
+            .speed-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 5px; }
+            .speed-legend span { min-width: 0; display: flex; align-items: center; gap: 4px; color: var(--uninus-muted); opacity: .72; }
+            .speed-legend span.active { color: var(--uninus-ink); opacity: 1; font-weight: 750; }
+            .speed-legend i { width: 14px; height: 6px; flex: 0 0 14px; border-radius: 3px; background-color: var(--range-color); }
+            .speed-legend small { font-size: 10px; }
+            .engine-text { padding: 0 13px; overflow-wrap: anywhere; color: var(--uninus-muted); font-size: 11px; }
             .engine-text:empty { display: none; }
-            .rain { display: grid; gap: 11px; }
-            .rain-value { text-align: left; color: var(--uninus-green); font-size: 17px; font-weight: 700; }
-            .rain.wet { border-color: color-mix(in srgb, #e7832f 50%, var(--uninus-line)); background: color-mix(in srgb, #e7832f 8%, var(--card-background-color, #fff)); }
-            .rain.wet .rain-value { color: #d86e1d; }
-            .rain-detail { color: var(--uninus-muted); font-size: 11px; }
-            .device { display: grid; gap: 12px; }
+            .light-panel { min-height: 96px; display: flex; align-items: center; gap: 12px; }
+            .weather-icon { width: 39px; height: 39px; flex: 0 0 39px; display: grid; place-items: center; border-radius: 13px; color: #c77b22; background: color-mix(in srgb, #e7a23b 14%, transparent); font-size: 19px; }
+            .light-panel > div { min-width: 0; display: grid; gap: 7px; }
+            .sensor-value { display: inline-flex; align-items: baseline; gap: 3px; }
+            .sensor-value strong { font-family: Georgia, serif; font-size: 23px; color: #bd7726; }
+            .sensor-value small { color: var(--uninus-muted); font-size: 10px; }
+            .rain { position: relative; min-height: 139px; display: grid; grid-template-columns: minmax(0, 1fr) 58px; align-items: center; gap: 7px; overflow: hidden; }
+            .rain-copy { min-width: 0; display: grid; gap: 8px; }
+            .rain-value { text-align: left; color: var(--uninus-green); font-family: Georgia, "Noto Serif TC", serif; font-size: 17px; font-weight: 700; }
+            .rain-detail { color: var(--uninus-muted); font-size: 10px; }
+            .rain.wet { border-color: color-mix(in srgb, #4d91b5 42%, var(--uninus-line)); background: linear-gradient(145deg, color-mix(in srgb, #6aa8c8 12%, var(--card-background-color, #fff)), color-mix(in srgb, #4d91b5 5%, transparent)); }
+            .rain.wet .rain-value { color: #327799; }
+            .rain.unknown, .rain.unavailable { filter: saturate(.55); }
+            .rain-symbol { position: relative; width: 58px; height: 78px; color: #4f8fab; }
+            .cloud { position: absolute; top: 3px; left: 10px; font-size: 36px; line-height: 1; }
+            .rain-static { position: absolute; top: 48px; left: 25px; color: var(--uninus-muted); font-size: 15px; }
+            .rain-motion i { position: absolute; top: 42px; width: 2px; height: 13px; border-radius: 3px; background: #4f9fc4; animation: rain-drop 1.05s linear infinite; }
+            .rain-motion i:nth-child(1) { left: 14px; animation-delay: -.15s; }
+            .rain-motion i:nth-child(2) { left: 27px; animation-delay: -.55s; }
+            .rain-motion i:nth-child(3) { left: 39px; animation-delay: -.35s; }
+            .rain-motion i:nth-child(4) { left: 49px; animation-delay: -.8s; }
+            .rain-motion b { position: absolute; top: 66px; left: 13px; width: 35px; height: 9px; border: 1px solid color-mix(in srgb, #4f9fc4 65%, transparent); border-radius: 50%; animation: rain-ripple 1.8s ease-out infinite; }
+            .rain-motion b:last-child { animation-delay: -.9s; }
+            @keyframes rain-drop { 0% { transform: translateY(-6px); opacity: 0; } 25% { opacity: .9; } 100% { transform: translateY(15px); opacity: 0; } }
+            @keyframes rain-ripple { from { transform: scale(.45); opacity: .75; } to { transform: scale(1.15); opacity: 0; } }
             .error { margin: 8px 12px 12px; padding: 8px; border-radius: 8px; color: var(--error-color, #db4437); background: color-mix(in srgb, var(--error-color, #db4437) 8%, transparent); font-size: 12px; }
-            footer { min-height: 34px; padding: 8px 18px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--uninus-line); }
-            ha-card.compact main { grid-template-columns: minmax(150px, .7fr) minmax(320px, 1.5fr); }
-            ha-card.compact .device-column { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
-            ha-card:is(.narrow, .small) header { align-items: flex-start; flex-wrap: wrap; }
-            ha-card:is(.narrow, .small) .status { width: 100%; margin-left: 50px; justify-content: flex-start; }
+            .maintenance-strip { min-height: 39px; padding: 8px 18px; display: flex; align-items: center; gap: 11px; border-top: 1px solid var(--uninus-line); color: var(--uninus-muted); font-size: 10px; letter-spacing: .02em; }
+            .maintenance-brand { color: var(--uninus-green); font-weight: 800; letter-spacing: .08em; }
+            .maintenance-strip button { min-width: 24px; min-height: 24px; display: inline-flex; align-items: center; gap: 6px; color: inherit; font-size: inherit; }
+            .maintenance-strip.weak { color: #b56c19; }
+            .maintenance-strip.offline { color: var(--error-color, #c7443e); }
+            .maintenance-strip.offline button i { background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 12%, transparent); }
+            .maintenance-strip .updated { margin-left: auto; }
+            ha-card.compact main { grid-template-columns: minmax(165px, .72fr) minmax(330px, 1.5fr); }
+            ha-card.compact .conditions-column { grid-column: 1 / -1; grid-template-columns: .8fr 1fr 1.4fr; }
+            ha-card:is(.narrow, .small) header { align-items: center; }
             ha-card:is(.narrow, .small) main { grid-template-columns: 1fr; }
             ha-card:is(.narrow, .small) .environment-column { grid-template-columns: 1fr 1fr; }
+            ha-card:is(.narrow, .small) .environment-column .section-heading { grid-column: 1 / -1; }
             ha-card:is(.narrow, .small) .wind-panel { grid-row: 2; }
-            ha-card:is(.narrow, .small) .device-column { grid-template-columns: 1fr 1fr; }
+            ha-card:is(.narrow, .small) .conditions-column { grid-template-columns: 1fr 1.15fr; }
+            ha-card:is(.narrow, .small) .conditions-column .section-heading { grid-column: 1 / -1; }
             ha-card:is(.narrow, .small) .wind-header { align-items: flex-start; flex-direction: column; }
-            ha-card:is(.narrow, .small) .wind-header .periods { margin-left: 0; }
+            ha-card:is(.narrow, .small) .wind-header .periods { margin-left: 0; width: 100%; }
             ha-card:is(.narrow, .small) .period-row { justify-content: flex-start; }
+            ha-card:is(.narrow, .small) .periods button,
+            ha-card:is(.narrow, .small) .maintenance-strip button { min-height: 44px; padding-inline: 12px; }
             ha-card:is(.narrow, .small) .wind-content { grid-template-columns: 1fr; }
-            ha-card:is(.narrow, .small) .wind-current { grid-template-columns: 1fr 1fr; border-left: 0; border-top: 1px solid var(--uninus-line); }
-            ha-card:is(.narrow, .small) #svg-container { min-height: 330px; }
-            ha-card.small .environment-column, ha-card.small .device-column { grid-template-columns: 1fr; }
-            ha-card.small footer { align-items: flex-start; flex-direction: column; gap: 3px; }
+            ha-card:is(.narrow, .small) .wind-current { grid-template-columns: .7fr 1fr; border-left: 0; border-top: 1px solid var(--uninus-line); }
+            ha-card:is(.narrow, .small) .wind-current > .eyebrow, ha-card:is(.narrow, .small) .speed-legend { grid-column: 1 / -1; }
+            ha-card:is(.narrow, .small) #svg-container { min-height: 340px; }
+            ha-card:is(.narrow, .small) .maintenance-strip { flex-wrap: wrap; }
+            ha-card:is(.narrow, .small) .maintenance-strip .updated { margin-left: 0; width: 100%; }
+            ha-card.small .live-mark span { display: none; }
+            ha-card.small .environment-column, ha-card.small .conditions-column { grid-template-columns: 1fr; }
+            ha-card.small .environment-column .section-heading, ha-card.small .conditions-column .section-heading { grid-column: auto; }
+            ha-card.small .primary-reading strong { font-size: 42px; }
+            ha-card.small .wind-current { grid-template-columns: 1fr 1fr; }
+            @media (prefers-reduced-motion: reduce) {
+                .rain-motion i, .rain-motion b { animation: none !important; }
+            }
         `;
     }
+
 }
