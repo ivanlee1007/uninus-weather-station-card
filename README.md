@@ -100,10 +100,20 @@ weather_entities:
     entity: sensor.outdoor_temperature
     name: 溫度
     unit: °C
+    value_ranges:
+      - { from_value: -50, color: "#4388b8", label: 偏低 }
+      - { from_value: 18, color: "#168e72", label: 舒適 }
+      - { from_value: 26, color: "#d07b29", label: 偏高 }
+      - { from_value: 32, color: "#d6533e", label: 炎熱 }
   humidity:
     entity: sensor.outdoor_humidity
     name: 相對濕度
     unit: "%"
+    value_ranges:
+      - { from_value: 0, color: "#4388b8", label: 偏乾 }
+      - { from_value: 40, color: "#168e72", label: 舒適 }
+      - { from_value: 70, color: "#d07b29", label: 偏高 }
+      - { from_value: 85, color: "#d6533e", label: 潮濕 }
   illuminance:
     entity: sensor.outdoor_illuminance
     name: 光照度
@@ -137,8 +147,15 @@ windspeed_entities:
     output_speed_unit: mps
     use_statistics: false
     windspeed_bar_full: true
-    speed_range_beaufort: true
+    speed_range_beaufort: false
     current_speed_arrow: true
+    speed_ranges:
+      - { from_value: 0, color: "rgb(100, 200, 100)" }
+      - { from_value: 2, color: "rgb(150, 220, 80)" }
+      - { from_value: 4, color: yellow }
+      - { from_value: 6, color: orange }
+      - { from_value: 9, color: orangered }
+      - { from_value: 12, color: red }
 
 buttons_config:
   location: top
@@ -177,9 +194,18 @@ current_direction:
   arrow_size: 50
 
 direction_labels:
-  cardinal_direction_letters: NESW
+  cardinal_direction_letters: 北東南西
   show_cardinal_directions: true
   show_intercardinal_directions: true
+  custom_labels:
+    n: 北
+    ne: 東北
+    e: 東
+    se: 東南
+    s: 南
+    sw: 西南
+    w: 西
+    nw: 西北
 
 matching_strategy:
   name: direction-first
@@ -198,14 +224,14 @@ matching_strategy:
 | `weather_entities` | object | 是 | — | 即時環境與裝置實體，見下表。 |
 | `rain_states` | object | 否 | 見「降雨狀態」 | 自訂濕／乾狀態字串陣列。 |
 | `wind_direction_entity` | object | 是 | — | 歷史與即時風向實體，見下表。 |
-| `windspeed_entities` | object[] | 是 | — | 至少一個；第一個也顯示為目前風速。 |
+| `windspeed_entities` | object[] | 是 | — | 至少一個；目前風速、色階圖例與風玫瑰共用當前選取的實體。 |
 | `refresh_interval` | number | 否 | `300` | 重新抓取歷史資料的秒數。 |
 | `data_period` | object | 否 | — | 固定查詢期間；若使用啟用中的 `period_selector`，請勿同時設定。 |
 | `buttons_config` | object | 否 | 內建 1H／8H／1D／10D 與前後移按鈕 | 支援 `period_selector`、`period_shift`、`period_shift_play`、`windrose_speed_selector`。 |
 | `hide_windspeed_bar` | boolean | 否 | `true` | 隱藏 Windrose 引擎的速度條；不影響右側目前風速。 |
 | `windspeed_bar_location` | `bottom` \| `right` | 否 | `bottom` | 未隱藏時的速度條位置。 |
 | `card_width` | number | 否 | `4` | Home Assistant sections 配置的建議欄寬。 |
-| `disable_animations` | boolean | 否 | `false` | 關閉玫瑰葉片與速度條動畫。 |
+| `disable_animations` | boolean | 否 | `false` | 關閉玫瑰葉片、速度條與局部降雨動畫；卡片也遵守系統的 reduced-motion 設定。 |
 | `rose_config` | object | 否 | 引擎預設 | 玫瑰圖方向數、圓圈、背景、透明度等。 |
 | `current_direction` | object | 否 | `{show_arrow: true}` | 目前風向箭頭設定。 |
 | `direction_labels` | object | 否 | 引擎預設 | 方位字母、層級、字級與自訂標籤。 |
@@ -225,8 +251,8 @@ matching_strategy:
 | `humidity` | 是 | 相對濕度。 |
 | `illuminance` | 是 | 光照度。 |
 | `rain` | 是 | 降雨原始狀態與分類。 |
-| `signal_strength` | 否 | 頁首狀態與裝置狀態。 |
-| `connectivity` | 否 | 頁首與裝置連線狀態；`off`、`false`、`disconnected` 顯示為非連線。 |
+| `signal_strength` | 否 | 僅顯示在底部設備維護列；弱訊號提高為琥珀色。 |
+| `connectivity` | 否 | 僅顯示在底部設備維護列；`off`、`false`、`disconnected` 顯示為紅色離線。 |
 
 每個 `weather_entities` 項目都支援：
 
@@ -235,6 +261,9 @@ matching_strategy:
 | `entity` | string | 是 | Home Assistant 實體 ID。 |
 | `name` | string | 否 | 使用實體的 `friendly_name`；若也沒有則留空／使用介面標籤。 |
 | `unit` | string | 否 | 使用實體的 `unit_of_measurement`。 |
+| `value_ranges` | object[] | 否 | 僅適用溫度／濕度；依序設定 `{from_value, color, label?}`。數值、狀態標籤與細刻度共用所選區間色，未設定時使用內建獨立級距。 |
+
+`value_ranges` 必須是非空、依 `from_value` 嚴格遞增的陣列；門檻須為有限數字，`color` 不可為空。顏色只強調主數值、狀態與細刻度，不會把整張面板染成警示色。
 
 ### `wind_direction_entity`
 
@@ -255,7 +284,7 @@ matching_strategy:
 |---|---|:---:|---|
 | `entity` | string | 是 | 風速實體 ID。 |
 | `name` | string | 否 | 顯示名稱。 |
-| `unit` | string | 否 | UNINUS 目前風速顯示單位；否則使用實體單位。 |
+| `unit` | string | 否 | 尚未完成風速換算時的原始狀態備援單位。正常顯示使用輸出單位。 |
 | `attribute` | string | 否 | 使用指定 attribute 取得歷史資料；不可與統計資料併用。 |
 | `use_statistics` | boolean | 否 | `false`。 |
 | `statistics_period` | string | 否 | `5minute`；亦支援 `hour`、`day`、`week`、`month`、`year`。 |

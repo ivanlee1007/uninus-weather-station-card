@@ -9,6 +9,7 @@ jest.mock("lit/decorators.js", () => ({
     customElement: () => (target: unknown) => target,
     query: () => () => undefined,
 }));
+jest.mock("lit/directives/style-map.js", () => ({ styleMap: jest.fn((value: unknown) => value) }));
 jest.mock("@svgdotjs/svg.js", () => ({
     SVG: () => ({ height() { return this; }, width() { return this; } }),
 }));
@@ -153,5 +154,139 @@ describe("UninusWeatherStationCard request lifecycle", () => {
         expect(oldPeriod.movePeriod).not.toHaveBeenCalled();
         expect(button.baseConfig.active).toBe(false);
         expect(card.windRoseDirigent.cancelPendingRender).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("UninusWeatherStationCard Atmospheric Atlas V2 shell", () => {
+    it("renders weather semantics while keeping maintenance data only in the footer", async () => {
+        const [{ UninusWeatherStationCard }, lit] = await Promise.all([
+            import("./UninusWeatherStationCard"),
+            import("lit"),
+        ]);
+        const htmlMock = lit.html as unknown as jest.Mock;
+        htmlMock.mockClear();
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+        card.responsiveMode = "wide";
+        card.errorMessage = "";
+        card.cardConfig = { buttonsConfig: undefined, disableAnimations: false };
+        card.config = {
+            ...UninusWeatherStationCard.getStubConfig(),
+            name: "UNINUS 氣象站",
+            device_label: "WS-01",
+            rain_states: { wet: ["on"], dry: ["off"] },
+            direction_labels: { custom_labels: { sw: "西南" } },
+            windspeed_entities: [{
+                entity: "sensor.wind_speed",
+                speed_ranges: [{ from_value: 0, color: "green" }, { from_value: 2, color: "lime" }],
+            }],
+            weather_entities: {
+                temperature: { entity: "sensor.temperature", value_ranges: [{ from_value: 0, color: "green", label: "舒適" }] },
+                humidity: { entity: "sensor.humidity", value_ranges: [{ from_value: 0, color: "teal", label: "舒適" }] },
+                illuminance: { entity: "sensor.illuminance", name: "光照度" },
+                rain: { entity: "binary_sensor.rain", name: "降雨" },
+                signal_strength: { entity: "sensor.signal", name: "訊號" },
+                connectivity: { entity: "binary_sensor.connected", name: "連線" },
+            },
+        };
+        card._hass = { states: {
+            "sensor.temperature": { state: "28", attributes: { unit_of_measurement: "°C" }, last_updated: "2026-09-12T08:00:00Z" },
+            "sensor.humidity": { state: "72", attributes: { unit_of_measurement: "%" } },
+            "sensor.illuminance": { state: "12000", attributes: { unit_of_measurement: "lx" } },
+            "binary_sensor.rain": { state: "on", attributes: {} },
+            "sensor.signal": { state: "-61", attributes: { unit_of_measurement: "dBm" } },
+            "binary_sensor.connected": { state: "on", attributes: {} },
+            "sensor.wind_direction": { state: "225", attributes: { unit_of_measurement: "°" } },
+            "sensor.wind_speed": { state: "3.8", attributes: { unit_of_measurement: "m/s" } },
+        } };
+
+        card.render();
+        const markup = htmlMock.mock.calls.map(call => Array.isArray(call[0]) ? call[0].join("") : "").join("\n");
+        expect(markup).toContain("atlas-kicker");
+        expect(markup).toContain("maintenance-strip");
+        expect(markup).toContain("speed-legend");
+        expect(markup).toContain('role="img"');
+        expect(markup).toContain('role="list"');
+        expect(markup).toContain("rain-motion");
+        expect(markup).not.toContain('<div class="status">');
+    });
+
+    it("keeps unknown rain distinct from unavailable while showing the same safe message", async () => {
+        const [{ UninusWeatherStationCard }, lit] = await Promise.all([
+            import("./UninusWeatherStationCard"),
+            import("lit"),
+        ]);
+        const htmlMock = lit.html as unknown as jest.Mock;
+        htmlMock.mockClear();
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+        card.responsiveMode = "narrow";
+        card.errorMessage = "";
+        card.initialized = false;
+        card.cardConfig = { buttonsConfig: undefined, disableAnimations: false, windspeedEntities: [{ useForWindRose: true }] };
+        card.config = { ...UninusWeatherStationCard.getStubConfig(), rain_states: { wet: ["on"], dry: ["off"] } };
+        card._hass = { states: {
+            "binary_sensor.rain": { state: "unknown", attributes: {} },
+        } };
+
+        card.render();
+        const dynamicValues = htmlMock.mock.calls.flatMap(call => call.slice(1));
+        expect(dynamicValues).toContain("unknown");
+        expect(dynamicValues).not.toContain("unavailable");
+    });
+
+    it("uses the selected WindRose speed entity, converted value, ranges, and output unit", async () => {
+        const [{ UninusWeatherStationCard }, lit] = await Promise.all([
+            import("./UninusWeatherStationCard"),
+            import("lit"),
+        ]);
+        const htmlMock = lit.html as unknown as jest.Mock;
+        htmlMock.mockClear();
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+        const getWindSpeed = jest.fn(() => 6.5);
+        card.responsiveMode = "wide";
+        card.errorMessage = "";
+        card.initialized = true;
+        card.entityStateProcessor = { getWindDirection: jest.fn(() => 225), getWindSpeed };
+        card.cardConfig = {
+            buttonsConfig: undefined,
+            disableAnimations: false,
+            windspeedEntities: [
+                { useForWindRose: false, outputSpeedUnit: "mps" },
+                { useForWindRose: true, outputSpeedUnit: "mps" },
+            ],
+        };
+        card.config = {
+            ...UninusWeatherStationCard.getStubConfig(),
+            windspeed_entities: [
+                { entity: "sensor.wind_speed", speed_ranges: [{ from_value: 0, color: "green" }] },
+                { entity: "sensor.wind_speed_2", speed_ranges: [{ from_value: 0, color: "blue" }] },
+            ],
+        };
+        card._hass = { states: {
+            "sensor.wind_speed": { state: "1", attributes: { unit_of_measurement: "m/s" } },
+            "sensor.wind_speed_2": { state: "23.4", attributes: { unit_of_measurement: "km/h" } },
+        } };
+
+        card.render();
+        expect(getWindSpeed).toHaveBeenCalledWith(1, false);
+        const dynamicValues = htmlMock.mock.calls.flatMap(call => call.slice(1));
+        expect(dynamicValues).toContain("m/s");
+        expect(dynamicValues).toContain("0 m/s");
+        expect(dynamicValues).not.toContain("km/h");
+    });
+
+    it("includes reduced-motion safety and 44px narrow touch controls", async () => {
+        const [{ UninusWeatherStationCard }, lit] = await Promise.all([
+            import("./UninusWeatherStationCard"),
+            import("lit"),
+        ]);
+        const cssMock = lit.css as unknown as jest.Mock;
+        cssMock.mockClear();
+        void UninusWeatherStationCard.styles;
+        const styles = cssMock.mock.calls.map(call => Array.isArray(call[0]) ? call[0].join("") : "").join("\n");
+        expect(styles).toContain("prefers-reduced-motion: reduce");
+        expect(styles).toContain("min-height: 44px");
+        expect(styles).toContain("container-type: inline-size");
+        expect(styles).toContain(":focus-visible");
+        expect(styles).toContain(".wind-panel { grid-row: 2;");
     });
 });
