@@ -410,11 +410,13 @@ describe("createMoreInfoEvent", () => {
 describe("classifyResponsiveMode", () => {
     it.each<[number, number, "wide" | "compact" | "narrow" | "small"]>([
         [980, 600, "wide"],
-        [760, 900, "wide"],
-        [759, 500, "compact"],
+        [900, 900, "wide"],
+        [899, 900, "compact"],
+        [760, 500, "compact"],
         [560, 900, "compact"],
         [559, 900, "narrow"],
-        [391, 480, "narrow"],
+        [431, 480, "narrow"],
+        [430, 900, "small"],
         [390, 900, "small"],
         [320, 480, "small"],
     ])("classifies a %sx%s card as %s", (width, height, expected) => {
@@ -450,8 +452,11 @@ describe("buildWindRoseConfig", () => {
         expect(wind.wind_direction_entity).toBe(config.wind_direction_entity);
         expect(wind.windspeed_entities).toBe(config.windspeed_entities);
         expect(wind.hide_windspeed_bar).toBe(true);
-        expect(buttons.map(button => button.button_text)).toEqual(["前移", "1H", "8H", "1D", "10D", "後移"]);
+        expect(buttons.map(button => button.button_text)).toEqual(["前移", "1H", "8H", "1D", "10D", "播放", "後移"]);
         expect(buttons.find(button => button.button_text === "8H")?.active).toBe(true);
+        expect(buttons.find(button => button.button_text === "播放")).toMatchObject({
+            type: "period_shift_play", period_back: "-8h", step_period: "+1h", window_period: "+1h",
+        });
     });
 
     it("keeps explicitly configured engine period buttons", () => {

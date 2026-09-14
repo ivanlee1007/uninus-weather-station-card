@@ -62,6 +62,30 @@ describe("UninusWeatherStationCard request lifecycle", () => {
         expect(refreshData.mock.calls[0][0]).toEqual(expect.any(Function));
     });
 
+    it("polishes the windrose after the deferred engine render", async () => {
+        jest.useFakeTimers();
+        const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
+        const polishWindRoseSvg = jest.fn();
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+        Object.assign(card, {
+            initialized: true,
+            windRoseDirigent: {
+                refreshData: jest.fn<() => Promise<any>>().mockResolvedValue({}),
+                renderGraphs: jest.fn(), updateStateRender: jest.fn(), cancelPendingRender: jest.fn(),
+            },
+            polishWindRoseSvg,
+            requestUpdate: jest.fn(),
+            errorMessage: "",
+            requestGeneration: 0,
+        });
+
+        card.refreshMeasurements(false);
+        await Promise.resolve();
+        expect(polishWindRoseSvg).not.toHaveBeenCalled();
+        jest.runOnlyPendingTimers();
+        expect(polishWindRoseSvg).toHaveBeenCalledTimes(1);
+    });
+
     it("refreshes immediately when an initialized card reconnects", async () => {
         const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
         const card = Object.create(UninusWeatherStationCard.prototype) as any;
@@ -158,6 +182,87 @@ describe("UninusWeatherStationCard request lifecycle", () => {
 });
 
 describe("UninusWeatherStationCard Atmospheric Atlas V2 shell", () => {
+    it("derives concise outdoor condition language for the approved visual hierarchy", async () => {
+        const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+
+        expect(card.describeTemperature(28.4)).toBe("溫暖");
+        expect(card.describeTemperature(undefined)).toBe("環境狀態待確認");
+        expect(card.describeWind(3.8)).toBe("微風");
+        expect(card.describeWind(undefined)).toBe("");
+    });
+
+    it("summarizes the active wind history for the approved statistics rows", async () => {
+        const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+        card.lastMeasurementHolder = {
+            speedMeasurements: [[
+                { value: "0.2" }, { value: "2.7" }, { value: "6.1" }, { value: "invalid" },
+            ]],
+        };
+
+        expect(card.summarizeWindHistory(0)).toEqual({ average: 3, maximum: 6.1, calmPercentage: 33 });
+        expect(card.summarizeWindHistory(1)).toEqual({ average: undefined, maximum: undefined, calmPercentage: undefined });
+    });
+
+    it("converts and duration-weights wind history statistics", async () => {
+        const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+        card.cardConfig = { windspeedEntities: [{
+            speedUnit: "kph", outputSpeedUnit: "mps", compensationFactor: 1, compensationAbsolute: 0,
+        }], activePeriod: { startTime: new Date(0), endTime: new Date(40_000) } };
+        card.lastMeasurementHolder = { speedMeasurements: [[
+            { startTime: 0, endTime: 10, value: "3.6" },
+            { startTime: 10, endTime: 1_000, value: "7.2" },
+        ]] };
+
+        expect(card.summarizeWindHistory(0)).toEqual({ average: 1.75, maximum: 2, calmPercentage: 0 });
+    });
+
+    it("resolves auto history units without crashing the stub or mislabeling values", async () => {
+        const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+        card.cardConfig = { windspeedEntities: [{
+            entity: "sensor.wind", speedUnit: "auto", outputSpeedUnit: "mps",
+            compensationFactor: 1, compensationAbsolute: 0,
+        }] };
+        card._hass = { states: { "sensor.wind": { attributes: { unit_of_measurement: "km/h" } } } };
+        card.lastMeasurementHolder = { speedMeasurements: [[{ startTime: 0, endTime: 10, value: "3.6" }]] };
+
+        expect(card.summarizeWindHistory(0)).toEqual({ average: 1, maximum: 1, calmPercentage: 0 });
+
+        card._hass = { states: {} };
+        expect(() => card.summarizeWindHistory(0)).not.toThrow();
+    });
+
+    it("uses compact klx formatting without changing the illuminance entity", async () => {
+        const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+
+        expect(card.formatIlluminance("18400", "lx")).toEqual({ value: "18.4", unit: "klx" });
+        expect(card.formatIlluminance("850", "lx")).toEqual({ value: "850", unit: "lx" });
+        expect(card.formatIlluminance("18", "klx")).toEqual({ value: "18", unit: "klx" });
+    });
+
+    it("hides radial percentage labels without hiding compass labels", async () => {
+        const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
+        const percentage = { textContent: "45%", style: {} as Record<string, string> };
+        const compass = { textContent: "西南", style: {} as Record<string, string> };
+        const intermediateRing = { getAttribute: (name: string) => name === "r" ? "148" : null, style: {} as Record<string, string> };
+        const outerRing = { getAttribute: (name: string) => name === "r" ? "500" : null, style: {} as Record<string, string> };
+        const card = Object.create(UninusWeatherStationCard.prototype) as any;
+        card.svg = { node: { querySelectorAll: (selector: string) => selector === "text"
+            ? [percentage, compass]
+            : selector === "circle" ? [intermediateRing, outerRing] : [] } };
+
+        card.polishWindRoseSvg();
+
+        expect(percentage.style.opacity).toBe("0");
+        expect(compass.style.opacity).toBeUndefined();
+        expect(intermediateRing.style.opacity).toBe("0");
+        expect(outerRing.style.opacity).toBeUndefined();
+    });
+
     it("renders weather semantics while keeping maintenance data only in the footer", async () => {
         const [{ UninusWeatherStationCard }, lit] = await Promise.all([
             import("./UninusWeatherStationCard"),
@@ -202,12 +307,22 @@ describe("UninusWeatherStationCard Atmospheric Atlas V2 shell", () => {
         card.render();
         const markup = htmlMock.mock.calls.map(call => Array.isArray(call[0]) ? call[0].join("") : "").join("\n");
         expect(markup).toContain("atlas-kicker");
+        expect(markup).toContain("dashboard");
+        expect(markup).toContain("overview");
+        expect(markup).toContain("temperature-row");
+        expect(markup).toContain("wind-main");
+        expect(markup).toContain("rose-center-overlay");
+        expect(markup).toContain("timeline");
         expect(markup).toContain("maintenance-strip");
+        expect(markup).toContain("maintenance-summary");
+        expect(markup).toContain("signal-label");
         expect(markup).toContain("speed-legend");
         expect(markup).toContain('role="img"');
         expect(markup).toContain('role="list"');
-        expect(markup).toContain("rain-motion");
+        expect(markup).toContain("rain-drops");
         expect(markup).not.toContain('<div class="status">');
+        expect(markup).not.toContain("section-index");
+        expect(markup).not.toContain("conditions-column");
     });
 
     it("keeps unknown rain distinct from unavailable while showing the same safe message", async () => {
@@ -286,7 +401,26 @@ describe("UninusWeatherStationCard Atmospheric Atlas V2 shell", () => {
         expect(styles).toContain("prefers-reduced-motion: reduce");
         expect(styles).toContain("min-height: 44px");
         expect(styles).toContain("container-type: inline-size");
+        expect(styles).toMatch(/ha-card\s*\{[^}]*display:\s*block/);
         expect(styles).toContain(":focus-visible");
-        expect(styles).toContain(".wind-panel { grid-row: 2;");
+        expect(styles).toContain("grid-template-columns: minmax(330px, .88fr) minmax(500px, 1.42fr)");
+        expect(styles).toContain("font-size: clamp(76px, 8cqi, 104px)");
+        expect(styles).toContain(".rose-center-overlay { position: absolute;");
+        expect(styles).toContain(".atlas-transport-controls .play-button");
+        expect(styles).toContain(".range-track i.active::after");
+        expect(styles).toContain('circle[r="148"] { opacity: 0; }');
+        expect(styles).toContain(".maintenance-brand { color: inherit; font-weight: 400; }");
+        expect(styles).toContain(".maintenance-strip button:first-of-type { color: inherit; font-weight: 400; }");
+        expect(styles).not.toContain("ha-card.small .live-mark span { display: none;");
+        expect(styles).toContain("ha-card.small .level-scale { margin-top: 14px;");
+        expect(styles).toContain("ha-card.small .metrics { margin-top: 20px;");
+        expect(styles).toContain(".wind-panel { min-width: 0; grid-template-columns: minmax(0, 1fr);");
+        expect(styles).toContain(".atlas-transport-controls button { min-width: 44px; width: 44px; min-height: 44px; height: 44px;");
+        expect(styles).toContain(".wind-speed { min-width: 44px; min-height: 44px;");
+        expect(styles).toContain("@container (max-width: 340px)");
+        expect(styles).toContain(".timeline { flex-wrap: wrap;");
+        expect(styles).toContain("#svg-container { overflow: hidden;");
+        expect(styles).toContain("ha-card.small .rain-state { margin-top: 14px;");
+        expect(styles).toContain("ha-card:is(.narrow, .small) .dashboard { grid-template-columns: 1fr;");
     });
 });

@@ -186,11 +186,11 @@ export const groupButtonsForLocation = <T extends { baseConfig: { newRow: boolea
 };
 
 export const classifyResponsiveMode = (width: number, _height: number): ResponsiveMode => {
-    if (width >= 760) {
+    if (width >= 900) {
         return "wide";
     }
     if (width >= 560) return "compact";
-    return width > 390 ? "narrow" : "small";
+    return width > 430 ? "narrow" : "small";
 };
 
 export const createMoreInfoEvent = (
@@ -247,6 +247,10 @@ const defaultPeriodButtons = [
     { type: "period_selector", button_text: "8H", period_back: "-8h", active: true },
     { type: "period_selector", button_text: "1D", period_back: "-1d" },
     { type: "period_selector", button_text: "10D", period_back: "-10d" },
+    {
+        type: "period_shift_play", button_text: "播放", period_back: "-8h",
+        step_period: "+1h", window_period: "+1h", delay: 1000,
+    },
     { type: "period_shift", button_text: "後移", shift_period: "+8h" },
 ];
 
