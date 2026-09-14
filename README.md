@@ -227,7 +227,7 @@ matching_strategy:
 | `windspeed_entities` | object[] | 是 | — | 至少一個；目前風速、色階圖例與風玫瑰共用當前選取的實體。 |
 | `refresh_interval` | number | 否 | `300` | 重新抓取歷史資料的秒數。 |
 | `data_period` | object | 否 | — | 固定查詢期間；若使用啟用中的 `period_selector`，請勿同時設定。 |
-| `buttons_config` | object | 否 | 內建 1H／8H／1D／10D 與前後移按鈕 | 支援 `period_selector`、`period_shift`、`period_shift_play`、`windrose_speed_selector`。 |
+| `buttons_config` | object | 否 | 內建 1H／8H／1D／10D、前後移與播放按鈕 | 支援 `period_selector`、`period_shift`、`period_shift_play`、`windrose_speed_selector`。 |
 | `hide_windspeed_bar` | boolean | 否 | `true` | 隱藏 Windrose 引擎的速度條；不影響右側目前風速。 |
 | `windspeed_bar_location` | `bottom` \| `right` | 否 | `bottom` | 未隱藏時的速度條位置。 |
 | `card_width` | number | 否 | `4` | Home Assistant sections 配置的建議欄寬。 |

@@ -1,6 +1,6 @@
 {
   "name": "uninus-weather-station-card",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Responsive UNINUS weather station and wind rose card for Home Assistant Lovelace",
   "main": "uninus-weather-station-card.js",
   "type": "module",
@@ -40,11 +40,10 @@
     "@typescript-eslint/parser": "^8.56.0",
     "babel-jest": "^29.7.0",
     "deepmerge": "^4.2.2",
-    "esbuild": "0.27.4",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.4",
     "http-server": "^14.1.1",
     "jest": "^29.7.0",
-    "rimraf": "^3.0.2",
     "ts-jest": "^29.2.5",
     "typescript": "^5.9.3"
   },
