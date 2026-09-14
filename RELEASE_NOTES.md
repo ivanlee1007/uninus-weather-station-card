@@ -1,5 +1,10 @@
 # UNINUS Weather Station Card — Development Notes
 
+## v0.2.2
+
+- 重新發布獨立版本標籤，修復部分 Home Assistant 主機在舊 `v0.2.1` 標籤快取期間安裝後，HACS 顯示已安裝但 `/hacsfiles/uninus-weather-station-card/uninus-weather-station-card.js` 實際回傳 404 的問題。
+- 卡片功能與 Atmospheric Atlas V2 視覺維持不變。
+
 ## v0.1.2
 
 - 將實機部署由外部 CDN resource 轉為 HACS 管理的 `/hacsfiles/` resource。
