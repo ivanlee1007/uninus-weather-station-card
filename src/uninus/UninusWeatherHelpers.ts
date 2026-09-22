@@ -49,6 +49,7 @@ export interface UninusWeatherStationCardConfig {
     type: string;
     name?: string;
     device_label?: string;
+    layout?: LayoutMode;
     wind_direction_entity: { entity: string; [key: string]: unknown };
     windspeed_entities: Array<{ entity: string; [key: string]: unknown }>;
     weather_entities: WeatherEntitiesConfig;
@@ -57,6 +58,9 @@ export interface UninusWeatherStationCardConfig {
 }
 
 export type RainClassification = "wet" | "dry" | "unknown" | "unavailable";
+
+export type LayoutMode = "auto" | "horizontal" | "vertical";
+export type LayoutOrientation = "horizontal" | "vertical";
 
 export type EightDirectionKey = "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "nw";
 
@@ -172,6 +176,13 @@ export const isRainAnimationEnabled = (
 
 export type ResponsiveMode = "wide" | "compact" | "narrow" | "small";
 
+export const resolveLayoutOrientation = (
+    layout: LayoutMode,
+    responsiveMode: ResponsiveMode,
+): LayoutOrientation => layout === "auto"
+    ? (responsiveMode === "wide" ? "horizontal" : "vertical")
+    : layout;
+
 export const groupButtonsForLocation = <T extends { baseConfig: { newRow: boolean } }>(
     configuredLocation: string,
     requestedLocation: string,
@@ -238,6 +249,7 @@ export const formatEntityState = (
 export type NormalizedWeatherStationConfig = UninusWeatherStationCardConfig & {
     name: string;
     device_label: string;
+    layout: LayoutMode;
     rain_states: { wet: string[]; dry: string[] };
 };
 
@@ -431,11 +443,15 @@ export const normalizeWeatherStationConfig = (
     }
     validateRainStates("wet", config.rain_states?.wet);
     validateRainStates("dry", config.rain_states?.dry);
+    if (config.layout !== undefined && !["auto", "horizontal", "vertical"].includes(config.layout)) {
+        throw new Error("UNINUS weather station card: layout must be auto, horizontal, or vertical.");
+    }
 
     return {
         ...config,
         name: config.name?.trim() || "UNINUS 氣象站",
         device_label: config.device_label?.trim() || "外部環境氣象站",
+        layout: config.layout ?? "auto",
         weather_entities: {
             ...config.weather_entities,
             temperature: {
