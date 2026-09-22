@@ -13,6 +13,7 @@ import {
     normalizeWeatherStationConfig,
     resolveActiveWindSpeedIndex,
     resolveEightDirection,
+    resolveLayoutOrientation,
     resolveSpeedRange,
     resolveValueRange,
     resolveWindSpeedDisplayUnit,
@@ -50,10 +51,21 @@ describe("normalizeWeatherStationConfig", () => {
 
         expect(normalized.name).toBe("UNINUS 氣象站");
         expect(normalized.device_label).toBe("外部環境氣象站");
+        expect(normalized.layout).toBe("auto");
         expect(normalized.rain_states.wet).toEqual(["下雨中", "on"]);
         expect(normalized.rain_states.dry).toEqual(["沒下雨", "off"]);
         expect(normalized.wind_direction_entity).toBe(config.wind_direction_entity);
         expect(normalized.windspeed_entities).toBe(config.windspeed_entities);
+    });
+
+    it.each(["auto", "horizontal", "vertical"] as const)("accepts the %s layout mode", layout => {
+        const normalized = normalizeWeatherStationConfig({ ...validConfig(), layout });
+        expect(normalized.layout).toBe(layout);
+    });
+
+    it("rejects an unsupported layout mode", () => {
+        expect(() => normalizeWeatherStationConfig({ ...validConfig(), layout: "diagonal" as never }))
+            .toThrow("layout must be auto, horizontal, or vertical");
     });
 
     it("supplies independent built-in temperature and humidity value ranges", () => {
@@ -421,6 +433,19 @@ describe("classifyResponsiveMode", () => {
         [320, 480, "small"],
     ])("classifies a %sx%s card as %s", (width, height, expected) => {
         expect(classifyResponsiveMode(width, height)).toBe(expected);
+    });
+});
+
+describe("resolveLayoutOrientation", () => {
+    it("uses the measured card mode in auto layout", () => {
+        expect(resolveLayoutOrientation("auto", "wide")).toBe("horizontal");
+        expect(resolveLayoutOrientation("auto", "compact")).toBe("vertical");
+        expect(resolveLayoutOrientation("auto", "small")).toBe("vertical");
+    });
+
+    it("honors a user-selected orientation", () => {
+        expect(resolveLayoutOrientation("horizontal", "small")).toBe("horizontal");
+        expect(resolveLayoutOrientation("vertical", "wide")).toBe("vertical");
     });
 });
 

@@ -33,6 +33,18 @@ describe("UninusWeatherStationCard request lifecycle", () => {
         jest.restoreAllMocks();
     });
 
+    it("exposes a Home Assistant visual editor and an auto-layout stub", async () => {
+        const createElement = jest.fn(() => ({ tagName: "UNINUS-WEATHER-STATION-CARD-EDITOR" }));
+        Object.assign(globalThis, { document: { createElement } });
+        const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
+
+        expect(UninusWeatherStationCard.getStubConfig()).toMatchObject({ layout: "auto" });
+        expect(UninusWeatherStationCard.getConfigElement()).toEqual({
+            tagName: "UNINUS-WEATHER-STATION-CARD-EDITOR",
+        });
+        expect(createElement).toHaveBeenCalledWith("uninus-weather-station-card-editor");
+    });
+
     it("ignores an older refresh that resolves after a newer request", async () => {
         const { UninusWeatherStationCard } = await import("./UninusWeatherStationCard");
         const first = deferred<Record<string, never>>();
@@ -403,7 +415,10 @@ describe("UninusWeatherStationCard Atmospheric Atlas V2 shell", () => {
         expect(styles).toContain("container-type: inline-size");
         expect(styles).toMatch(/ha-card\s*\{[^}]*display:\s*block/);
         expect(styles).toContain(":focus-visible");
-        expect(styles).toContain("grid-template-columns: minmax(330px, .88fr) minmax(500px, 1.42fr)");
+        expect(styles).toContain("grid-template-columns: minmax(0, .88fr) minmax(0, 1.42fr)");
+        expect(styles).toContain("ha-card.layout-vertical .dashboard { grid-template-columns: 1fr; }");
+        expect(styles).toContain("ha-card.layout-horizontal:is(.compact, .narrow, .small) .overview");
+        expect(styles).toContain("ha-card.layout-horizontal:is(.compact, .narrow, .small) .timeline { flex-wrap: wrap;");
         expect(styles).toContain("font-size: clamp(76px, 8cqi, 104px)");
         expect(styles).toContain(".rose-center-overlay { position: absolute;");
         expect(styles).toContain(".atlas-transport-controls .play-button");
@@ -421,6 +436,6 @@ describe("UninusWeatherStationCard Atmospheric Atlas V2 shell", () => {
         expect(styles).toContain(".timeline { flex-wrap: wrap;");
         expect(styles).toContain("#svg-container { overflow: hidden;");
         expect(styles).toContain("ha-card.small .rain-state { margin-top: 14px;");
-        expect(styles).toContain("ha-card:is(.narrow, .small) .dashboard { grid-template-columns: 1fr;");
+        expect(styles).toContain("ha-card.layout-vertical .dashboard { grid-template-columns: 1fr;");
     });
 });

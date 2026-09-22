@@ -13,6 +13,7 @@ import { EntityStatesProcessor } from "../entity-state-processing/EntityStatesPr
 import { DateTimeFormatter } from "../formatter/DateTimeFormatter";
 import { SpeedUnits } from "../converter/SpeedUnits";
 import { WindSpeedConverter } from "../converter/WindSpeedConverter";
+import "./UninusWeatherStationCardEditor";
 
 import { HAMeasurementProvider } from "../measurement-provider/HAMeasurementProvider";
 import { HAWebservice } from "../measurement-provider/HAWebservice";
@@ -33,6 +34,7 @@ import {
     normalizeWeatherStationConfig,
     resolveActiveWindSpeedIndex,
     resolveEightDirection,
+    resolveLayoutOrientation,
     resolveSpeedRange,
     resolveValueRange,
     resolveWindSpeedDisplayUnit,
@@ -64,11 +66,16 @@ if (!window.customCards.some(card => card.type === "uninus-weather-station-card"
 
 @customElement("uninus-weather-station-card")
 export class UninusWeatherStationCard extends LitElement {
+    public static getConfigElement(): HTMLElement {
+        return document.createElement("uninus-weather-station-card-editor");
+    }
+
     public static getStubConfig(): Record<string, unknown> {
         return {
             type: "custom:uninus-weather-station-card",
             name: "UNINUS 氣象站",
             device_label: "外部環境氣象站",
+            layout: "auto",
             wind_direction_entity: { entity: "sensor.wind_direction" },
             windspeed_entities: [{ entity: "sensor.wind_speed", name: "風速" }],
             weather_entities: {
@@ -247,9 +254,10 @@ export class UninusWeatherStationCard extends LitElement {
             periodHours ? `${Math.round(periodHours / 24)}D` : "時段";
         const deviceLabel = (this.config?.device_label ?? "WS-01").trim();
         const maintenanceDeviceLabel = deviceLabel.match(/\bWS[-–]\d+\b/i)?.[0] ?? deviceLabel.split(/\s+/)[0] ?? "WS-01";
+        const layoutOrientation = resolveLayoutOrientation(this.config?.layout ?? "auto", this.responsiveMode);
 
         return html`
-            <ha-card class=${this.responsiveMode}>
+            <ha-card class=${`${this.responsiveMode} layout-${layoutOrientation}`}>
                 <header class="topbar">
                     <div class="logo" aria-hidden="true"><span>U</span></div>
                     <div class="identity">
@@ -857,7 +865,7 @@ export class UninusWeatherStationCard extends LitElement {
             .live-mark i, .maintenance-strip button i { width: 7px; height: 7px; border-radius: 50%; background: #20a879; box-shadow: 0 0 0 5px #20a8791f; }
             .live-mark.offline { color: var(--error-color, #c7443e); }
             .live-mark.offline i { background: currentColor; box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 12%, transparent); }
-            .dashboard { display: grid; grid-template-columns: minmax(330px, .88fr) minmax(500px, 1.42fr); min-height: 548px; }
+            .dashboard { display: grid; grid-template-columns: minmax(0, .88fr) minmax(0, 1.42fr); min-height: 548px; }
             .overview { min-width: 0; padding: 30px 30px 24px; display: flex; flex-direction: column; border-right: 1px solid var(--uninus-line); background: linear-gradient(150deg, #fbfaf5 5%, #edf3ec 100%); }
             .temperature-row { margin-top: 12px; display: flex; align-items: flex-start; gap: 14px; }
             .temperature-hero, .metric-row, .rain-state, .wind-speed, .wind-direction-readout, .maintenance-strip button { appearance: none; border: 0; padding: 0; background: transparent; color: inherit; cursor: pointer; }
@@ -967,8 +975,9 @@ export class UninusWeatherStationCard extends LitElement {
             .maintenance-strip.weak { color: #b56c19; }
             .maintenance-strip.offline { color: var(--error-color, #c7443e); }
             .maintenance-strip.offline button i { background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 12%, transparent); }
-            ha-card:is(.compact, .narrow, .small) .dashboard { grid-template-columns: 1fr; }
-            ha-card:is(.compact, .narrow, .small) .overview { padding: 24px 20px 20px; border-right: 0; border-bottom: 1px solid var(--uninus-line); }
+            ha-card.layout-vertical .dashboard { grid-template-columns: 1fr; }
+            ha-card.layout-vertical .overview { border-right: 0; border-bottom: 1px solid var(--uninus-line); }
+            ha-card:is(.compact, .narrow, .small) .overview { padding: 24px 20px 20px; }
             ha-card:is(.compact, .narrow, .small) .temperature-hero strong { font-size: 84px; }
             ha-card:is(.compact, .narrow, .small) .wind-panel { padding: 21px 18px 16px; }
             ha-card:is(.compact, .narrow, .small) .wind-header { align-items: flex-start; flex-wrap: wrap; }
@@ -985,7 +994,6 @@ export class UninusWeatherStationCard extends LitElement {
             ha-card:is(.compact, .narrow, .small) .maintenance-strip { flex-wrap: wrap; padding: 8px 18px; }
             ha-card:is(.compact, .narrow, .small) .maintenance-strip button { min-height: 44px; padding-inline: 8px; }
             ha-card:is(.compact, .narrow, .small) .maintenance-strip .updated { margin-left: auto; }
-            ha-card:is(.narrow, .small) .dashboard { grid-template-columns: 1fr; }
             ha-card:is(.narrow, .small) .topbar { height: 68px; padding: 0 18px; }
             ha-card:is(.narrow, .small) .range::before { display: none; }
             ha-card.small .identity > span { font-size: 10px; letter-spacing: .03em; }
@@ -1005,6 +1013,14 @@ export class UninusWeatherStationCard extends LitElement {
             ha-card.small .maintenance-strip button { min-width: 0; min-height: 44px; padding-inline: 3px; white-space: nowrap; }
             ha-card.small .speed-legend span, ha-card.small .speed-legend small { font-size: 8px; }
             ha-card.small .maintenance-strip .updated { margin-left: 0; }
+            ha-card.layout-horizontal:is(.compact, .narrow, .small) .overview { padding: 18px 12px; }
+            ha-card.layout-horizontal:is(.compact, .narrow, .small) .temperature-row { display: grid; gap: 6px; }
+            ha-card.layout-horizontal:is(.compact, .narrow, .small) .temperature-hero strong { font-size: clamp(44px, 11cqi, 64px); }
+            ha-card.layout-horizontal:is(.compact, .narrow, .small) .level-tag { justify-self: start; white-space: normal; }
+            ha-card.layout-horizontal:is(.compact, .narrow, .small) .timeline { flex-wrap: wrap; padding-block: 4px; }
+            ha-card.layout-horizontal:is(.compact, .narrow, .small) .timeline .range { width: 100%; margin-left: 0; text-align: right; }
+            ha-card.layout-horizontal:is(.compact, .narrow, .small) .range::before { display: none; }
+            ha-card.layout-horizontal:is(.compact, .narrow, .small) #svg-container { overflow: hidden; }
             @container (max-width: 340px) {
                 .timeline { flex-wrap: wrap; padding-block: 4px; }
                 .timeline .range { width: 100%; margin-left: 0; text-align: right; }

@@ -63,8 +63,11 @@ lovelace:
 
 以下六個實體是必要項目：風向、至少一個風速，以及溫度、濕度、照度、降雨。
 
+從 Home Assistant「增加卡片」選擇 **UNINUS Weather Station Card** 後，可直接使用 Lovelace 圖形化設定介面選取實體與調整基本選項。未呈現在圖形介面的進階 YAML 設定會在儲存時完整保留。
+
 ```yaml
 type: custom:uninus-weather-station-card
+layout: auto
 wind_direction_entity:
   entity: sensor.wind_direction
 windspeed_entities:
@@ -88,6 +91,7 @@ weather_entities:
 type: custom:uninus-weather-station-card
 name: UNINUS 校園氣象站
 device_label: 戶外環境氣象站
+layout: auto
 refresh_interval: 300
 card_width: 8
 disable_animations: false
@@ -221,6 +225,7 @@ matching_strategy:
 | `type` | string | 是 | — | 固定為 `custom:uninus-weather-station-card`。 |
 | `name` | string | 否 | `UNINUS 氣象站` | 卡片主標題。空字串也會使用預設值。 |
 | `device_label` | string | 否 | `外部環境氣象站` | 裝置副標題。 |
+| `layout` | `auto` \| `horizontal` \| `vertical` | 否 | `auto` | `auto` 依卡片自身寬度切換；另可強制橫式或直式排列。 |
 | `weather_entities` | object | 是 | — | 即時環境與裝置實體，見下表。 |
 | `rain_states` | object | 否 | 見「降雨狀態」 | 自訂濕／乾狀態字串陣列。 |
 | `wind_direction_entity` | object | 是 | — | 歷史與即時風向實體，見下表。 |
