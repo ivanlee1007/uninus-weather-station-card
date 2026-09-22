@@ -1,7 +1,8 @@
 # UNINUS Weather Station Card — Development Notes
 
-## v0.3.0
+## v0.3.1
 
+- 因儲存庫沿用的上游歷史標籤已占用 `v0.3.0`，正式功能版本改以 `v0.3.1` 發布。
 - 新增符合 Home Assistant Lovelace 規範的圖形化卡片設定介面，可直接選取氣象實體並調整常用選項。
 - 新增 `layout: auto | horizontal | vertical`；自動模式依卡片自身尺寸判斷，亦可強制橫式或直式排列。
 - 圖形介面 round-trip 會保留未顯示的進階 Windrose、色階、期間按鈕與 Home Assistant action 設定。
